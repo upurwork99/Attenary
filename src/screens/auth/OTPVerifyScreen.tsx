@@ -13,7 +13,9 @@ const OTPVerifyScreen = () => {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const RESEND_COOLDOWN_BASE = 30;
+  const RESEND_COOLDOWN_MAX = 300;
+  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_BASE);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -41,12 +43,23 @@ const OTPVerifyScreen = () => {
     }
   };
 
+  const isRateLimited = (err: any) => {
+    const msg = (err?.message || err?.error_description || err?.msg || '').toLowerCase();
+    return msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('429');
+  };
+
   const handleResend = async () => {
+    if (resendCooldown > 0) return;
     setError('');
-    setResendCooldown(30);
     const { error } = await supabase.auth.resend({ email, type: 'signup' });
     if (error) {
-      setError(error.message || 'Failed to resend code. Please try again.');
+      if (isRateLimited(error)) {
+        const next = Math.min(RESEND_COOLDOWN_BASE * 2, RESEND_COOLDOWN_MAX);
+        setResendCooldown(next);
+        setError(`Too many requests. Please wait ${next} seconds and try again.`);
+      } else {
+        setError(error.message || 'Failed to resend code. Please try again.');
+      }
     }
   };
 
