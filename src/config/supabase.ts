@@ -10,3 +10,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
 });
+
+export const createSupabaseClient = (clerkToken: string | null) => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: clerkToken ? `Bearer ${clerkToken}` : '',
+      },
+    },
+  });
+};

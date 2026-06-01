@@ -3,6 +3,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, StyleSheet, Alert, Platform, ScrollView } from 'react-native';
+import { ClerkProvider, ClerkLoaded } from '@clerk/clerk-expo';
+import { tokenCache } from './src/cache';
 import { Provider } from './src/context/AppContext';
 import { SupabaseProvider } from './src/context/SupabaseContext';
 import Navigation from './src/navigation/Navigation';
@@ -10,6 +12,8 @@ import { ThemeProvider } from './src/theme/ThemeContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { colors } from './src/theme/colors';
 import Svg, { Path, Polygon, Line, Circle } from 'react-native-svg';
+
+const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
 // Global error handlers to prevent Android crashes
 if (Platform.OS !== 'web') {
@@ -165,30 +169,33 @@ export default function App() {
     return (
       <ErrorBoundary>
         <Container style={{ flex: 1 }}>
-          <SafeAreaProvider>
-            <ContextErrorBoundary>
-              <ThemeProvider>
+          <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+            <ClerkLoaded>
+              <SafeAreaProvider>
                 <ContextErrorBoundary>
-              <LanguageProvider>
-                <ContextErrorBoundary>
-                  <SupabaseProvider>
-                    <Provider>
-                      <StatusBar style="light" backgroundColor="#0f172a" />
-                      <Navigation />
-                    </Provider>
-                  </SupabaseProvider>
+                  <ThemeProvider>
+                    <ContextErrorBoundary>
+                      <LanguageProvider>
+                        <ContextErrorBoundary>
+                          <SupabaseProvider>
+                            <Provider>
+                              <StatusBar style="light" backgroundColor="#0f172a" />
+                              <Navigation />
+                            </Provider>
+                          </SupabaseProvider>
+                        </ContextErrorBoundary>
+                      </LanguageProvider>
+                    </ContextErrorBoundary>
+                  </ThemeProvider>
                 </ContextErrorBoundary>
-              </LanguageProvider>
-                </ContextErrorBoundary>
-              </ThemeProvider>
-            </ContextErrorBoundary>
-          </SafeAreaProvider>
+              </SafeAreaProvider>
+            </ClerkLoaded>
+          </ClerkProvider>
         </Container>
       </ErrorBoundary>
     );
   } catch (error) {
     console.error('Critical app rendering error:', error);
-    // Fallback UI if everything fails
     return (
       <View style={{ flex: 1, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{ color: '#fff', fontSize: 18 }}>App failed to load</Text>

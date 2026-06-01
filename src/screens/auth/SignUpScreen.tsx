@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, StatusBar, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSupabase } from '../../context/SupabaseContext';
+import { useSignUp } from '@clerk/clerk-expo';
 import { colors, spacing, borderRadius, fonts } from '../../theme/colors';
 
 const SignUpScreen = () => {
   const navigation = useNavigation<any>();
   const { signUp, resendOtp, checkEmailRegistered } = useSupabase();
+  const { signUp: signUpClerk, isLoaded } = useSignUp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -38,6 +40,10 @@ const SignUpScreen = () => {
 
    const handleSignUp = async () => {
     if (!validate()) return;
+    if (!isLoaded) {
+      setError('Auth is still loading. Please try again.');
+      return;
+    }
     setLoading(true);
     setSignupCooldown(SIGNUP_COOLDOWN_SECONDS);
     setError('');
@@ -49,36 +55,25 @@ const SignUpScreen = () => {
         return;
       }
       if (registered) {
-        const { error } = await resendOtp(email.trim().toLowerCase());
-        if (error) {
-          if (isRateLimited(error)) {
-            setSignupCooldown(120);
-            setError('Too many requests. Please wait 2 minutes and try again.');
-          } else {
-            setError(error.message || 'Failed to resend code. Please try again.');
-          }
-          return;
-        }
-        setResentMessage('This email is already registered. We have resent the verification code.');
+        setError('This email is already registered. Please sign in instead.');
+        return;
       } else {
-        const { error } = await signUp(email.trim().toLowerCase(), password);
-        if (error) {
-          if (isRateLimited(error)) {
-            setSignupCooldown(120);
-            setError('Too many sign-up requests. Please wait 2 minutes and try again.');
-          } else {
-            setError(error.message || 'Sign up failed. Please try again.');
-          }
-          return;
+        const result = await signUpClerk.create({
+          emailAddress: email.trim().toLowerCase(),
+          password,
+        });
+        if (result.status === 'complete') {
+          await setActive({ session: result.createdSessionId });
+        } else {
+          setError('Sign up incomplete. Please check your email to verify your account.');
         }
       }
-      navigation.navigate('OTPVerify', { email: email.trim().toLowerCase() } as never);
-    } catch (err) {
+    } catch (err: any) {
       if (isRateLimited(err)) {
         setSignupCooldown(120);
         setError('Too many sign-up requests. Please wait 2 minutes and try again.');
       } else {
-        setError('Sign up failed. Please check your network and try again.');
+        setError(err?.message || 'Sign up failed. Please check your network and try again.');
       }
     } finally {
       setLoading(false);
