@@ -51,7 +51,9 @@ const OTPVerifyScreen = () => {
   const handleResend = async () => {
     if (resendCooldown > 0) return;
     setError('');
+    setLoading(true);
     const { error } = await supabase.auth.resend({ email, type: 'signup' });
+    setLoading(false);
     if (error) {
       if (isRateLimited(error)) {
         const next = Math.min(RESEND_COOLDOWN_BASE * 2, RESEND_COOLDOWN_MAX);
@@ -60,6 +62,9 @@ const OTPVerifyScreen = () => {
       } else {
         setError(error.message || 'Failed to resend code. Please try again.');
       }
+    } else {
+      setResendCooldown(RESEND_COOLDOWN_BASE);
+      setOtp('');
     }
   };
 
