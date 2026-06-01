@@ -13,8 +13,8 @@ const OTPVerifyScreen = () => {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const RESEND_COOLDOWN_BASE = 30;
-  const RESEND_COOLDOWN_MAX = 300;
+  const RESEND_COOLDOWN_BASE = 60;
+  const RESEND_COOLDOWN_MAX = 600;
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_BASE);
 
   useEffect(() => {

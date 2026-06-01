@@ -12,6 +12,19 @@ const SignUpScreen = () => {
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [signupCooldown, setSignupCooldown] = useState(0);
+  const SIGNUP_COOLDOWN = 15;
+
+  const isRateLimited = (err: any) => {
+    const msg = (err?.message || err?.error_description || err?.msg || '').toLowerCase();
+    return msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests');
+  };
+
+  useEffect(() => {
+    if (signupCooldown <= 0) return;
+    const t = setTimeout(() => setSignupCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [signupCooldown]);
 
   const validate = () => {
     if (!email.trim() || !password || !confirm) { setError('All fields are required'); return false; }
@@ -25,17 +38,27 @@ const SignUpScreen = () => {
   const handleSignUp = async () => {
     if (!validate()) return;
     setLoading(true);
+    setSignupCooldown(SIGNUP_COOLDOWN);
     setError('');
     try {
       const { error } = await signUp(email.trim().toLowerCase(), password);
       if (error) {
-        setError(error.message || 'Sign up failed. Please try again.');
+        if (isRateLimited(error)) {
+          setSignupCooldown(120);
+          setError('Too many sign-up requests. Please wait 2 minutes and try again.');
+        } else {
+          setError(error.message || 'Sign up failed. Please try again.');
+        }
         return;
       }
-      setLoading(false);
       navigation.navigate('OTPVerify', { email: email.trim().toLowerCase() } as never);
-    } catch {
-      setError('Sign up failed. Please check your network and try again.');
+    } catch (err) {
+      if (isRateLimited(err)) {
+        setSignupCooldown(120);
+        setError('Too many sign-up requests. Please wait 2 minutes and try again.');
+      } else {
+        setError('Sign up failed. Please check your network and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -66,8 +89,8 @@ const SignUpScreen = () => {
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <TouchableOpacity style={[styles.button, styles.primaryButton, loading ? styles.buttonDisabled : null]} onPress={handleSignUp} disabled={loading} activeOpacity={0.85}>
-            {loading ? <ActivityIndicator color={colors.bgMain} /> : <Text style={styles.primaryButtonText}>Sign Up</Text>}
+          <TouchableOpacity style={[styles.button, styles.primaryButton, (loading || signupCooldown > 0) ? styles.buttonDisabled : null]} onPress={handleSignUp} disabled={loading || signupCooldown > 0} activeOpacity={0.85}>
+            {loading ? <ActivityIndicator color={colors.bgMain} /> : <Text style={styles.primaryButtonText}>{signupCooldown > 0 ? `Please wait ${signupCooldown}s` : 'Sign Up'}</Text>}
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.linkButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
