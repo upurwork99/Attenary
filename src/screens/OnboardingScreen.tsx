@@ -5,22 +5,17 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions,
   StatusBar,
   Image,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { useSupabase } from '../context/SupabaseContext';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, fonts } from '../theme/colors';
-import { useLanguage, Language } from '../context/LanguageContext';
-import * as ImagePicker from 'expo-image-picker';
-
-const { width, height } = Dimensions.get('window');
+import { useLanguage } from '../context/LanguageContext';
 
 interface OnboardingStep {
   id: string;
@@ -33,8 +28,7 @@ interface OnboardingStep {
     placeholder: string;
     keyboardType?: 'default' | 'email-address';
     autoCapitalize?: 'none' | 'words' | 'sentences';
-    multiline?: boolean;
-    field: 'employeeName' | 'email' | 'jobTitle' | 'department';
+    field: 'jobTitle' | 'department';
   };
 }
 
@@ -44,18 +38,15 @@ const OnboardingScreen = () => {
   const [buttonScale] = useState(new Animated.Value(1));
   const [progressAnim] = useState(new Animated.Value(0));
   const [inputValues, setInputValues] = useState({
-    employeeName: '',
-    email: '',
     jobTitle: '',
     department: '',
   });
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>('en');
+  const [selectedLanguage, setSelectedLanguage] = useState(useLanguage().language);
   const [inputError, setInputError] = useState('');
-  const [saving, setSaving] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const navigation: any = useNavigation();
-  const { profile, updateProfile, uploadAvatar } = useSupabase();
+  const { profile, updateProfile } = useSupabase();
   const { setLanguage } = useLanguage();
 
   useEffect(() => {
@@ -64,41 +55,34 @@ const OnboardingScreen = () => {
     }
   }, [profile?.onboarding_completed]);
 
-  const saveField = async (field: 'full_name' | 'email' | 'job_title' | 'department', value: string) => {
-    setSaving(true);
-    const { error } = await updateProfile({ [field]: value });
-    setSaving(false);
-    if (error) {
-      Alert.alert('Error', 'Failed to save profile. Please try again.');
-    }
-  };
-
-  const handlePickAvatar = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets?.length) return;
-    const asset = result.assets[0];
-    setSaving(true);
-    const { url, error } = await uploadAvatar(asset.uri);
-    setSaving(false);
-    if (error) {
-      Alert.alert('Error', 'Failed to upload avatar. It will sync when you are back online.');
-    }
+  const queueSave = (field: 'job_title' | 'department', value: string) => {
+    if (!profile?.id) return;
+    const save = async () => {
+      try {
+        const { error } = await updateProfile({ [field]: value });
+        if (error) {
+          console.log('Onboarding background save failed for', field, error);
+        }
+      } catch (e) {
+        console.log('Onboarding background save error for', field, e);
+      }
+    };
+    void save();
   };
 
   const markOnboardingComplete = async () => {
-    setSaving(true);
-    const { error } = await updateProfile({ onboarding_completed: true });
-    setSaving(false);
-    if (error) {
-      Alert.alert('Error', 'Failed to complete onboarding. Please try again.');
-      return false;
-    }
-    return true;
+    if (!profile?.id) return;
+    const save = async () => {
+      try {
+        const { error } = await updateProfile({ onboarding_completed: true });
+        if (error) {
+          console.log('Onboarding completion save failed', error);
+        }
+      } catch (e) {
+        console.log('Onboarding completion save error', e);
+      }
+    };
+    void save();
   };
 
   const onboardingSteps: OnboardingStep[] = [
@@ -117,34 +101,6 @@ const OnboardingScreen = () => {
       subtitle: 'We need a few details',
       description: 'This will help us personalize your experience and set up your profile.',
       illustration: require('../../assets/on-2.png'),
-    },
-    {
-      id: 'name',
-      type: 'input',
-      title: 'What\'s Your Name?',
-      subtitle: 'Let\'s personalize your experience',
-      description: 'Enter your full name so we can address you properly.',
-      illustration: require('../../assets/name.png'),
-      inputConfig: {
-        placeholder: 'Enter your full name',
-        keyboardType: 'default',
-        autoCapitalize: 'words',
-        field: 'employeeName',
-      },
-    },
-    {
-      id: 'email',
-      type: 'input',
-      title: 'Your Email Address',
-      subtitle: 'For important notifications',
-      description: 'We\'ll use this to send you reports and updates.',
-      illustration: require('../../assets/email.png'),
-      inputConfig: {
-        placeholder: 'Enter your email address',
-        keyboardType: 'email-address',
-        autoCapitalize: 'none',
-        field: 'email',
-      },
     },
     {
       id: 'job',
@@ -204,14 +160,6 @@ const OnboardingScreen = () => {
         setInputError('This field is required');
         return false;
       }
-
-      if (field === 'email') {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) {
-          setInputError('Please enter a valid email address');
-          return false;
-        }
-      }
     }
 
     setInputError('');
@@ -227,112 +175,66 @@ const OnboardingScreen = () => {
       const field = currentStep.inputConfig.field;
       const value = inputValues[field];
 
-      switch (field) {
-        case 'employeeName':
-          await saveField('full_name', value);
-          break;
-        case 'email':
-          await saveField('email', value);
-          break;
-        case 'jobTitle':
-          await saveField('job_title', value);
-          break;
-        case 'department':
-          await saveField('department', value);
-          break;
-      }
+      const supabaseField = field === 'jobTitle' ? 'job_title' : 'department';
+      queueSave(supabaseField, value);
     }
 
     if (currentStep.type === 'language') {
-      await setLanguage(selectedLanguage, true);
+      void setLanguage(selectedLanguage, true);
     }
 
     if (currentIndex < totalSteps - 1) {
-      Animated.timing(fadeAnim, {
-        toValue: 0.7,
-        duration: 300,
-        useNativeDriver: false,
-      }).start(() => {
-        const nextIndex = currentIndex + 1;
-        setCurrentIndex(nextIndex);
-
+      const nextIndex = currentIndex + 1;
+      setCurrentIndex(nextIndex);
+      Animated.parallel([
         Animated.timing(progressAnim, {
           toValue: (nextIndex + 1) / totalSteps,
-          duration: 400,
-          useNativeDriver: false,
-        }).start();
-
-        Animated.timing(fadeAnim, {
-          toValue: 1,
           duration: 300,
           useNativeDriver: false,
-        }).start();
-      });
+        }),
+        Animated.sequence([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+        ]),
+      ]).start();
     } else {
-      Animated.sequence([
-        Animated.timing(buttonScale, {
-          toValue: 1.2,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.spring(buttonScale, {
-          toValue: 1,
-          friction: 3,
-          useNativeDriver: false,
-        }),
-      ]).start(async () => {
-        const ok = await markOnboardingComplete();
-        if (ok) {
-          if (Platform.OS === 'web' && selectedLanguage === 'ar') {
-            setTimeout(() => {
-              window.location.reload();
-            }, 100);
-          } else {
-            navigation.replace('Main');
-          }
-        }
-      });
+      void markOnboardingComplete();
+      navigation.replace('Main');
     }
-  };
-
-  const handleButtonPressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.95,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleButtonPressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      friction: 3,
-      useNativeDriver: false,
-    }).start();
   };
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
       setInputError('');
-      Animated.timing(fadeAnim, {
-        toValue: 0.7,
-        duration: 300,
-        useNativeDriver: false,
-      }).start(() => {
-        const prevIndex = currentIndex - 1;
-        setCurrentIndex(prevIndex);
-
+      const prevIndex = currentIndex - 1;
+      setCurrentIndex(prevIndex);
+      Animated.parallel([
         Animated.timing(progressAnim, {
           toValue: (prevIndex + 1) / totalSteps,
-          duration: 400,
-          useNativeDriver: false,
-        }).start();
-
-        Animated.timing(fadeAnim, {
-          toValue: 1,
           duration: 300,
           useNativeDriver: false,
-        }).start();
-      });
+        }),
+        Animated.sequence([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+        ]),
+      ]).start();
     }
   };
 
@@ -380,8 +282,8 @@ const OnboardingScreen = () => {
     }
 
     const languages = [
-      { code: 'en' as Language, name: 'English', subtitle: 'Left to right (LTR)', flag: require('../../assets/icons/english.png') },
-      { code: 'ar' as Language, name: 'العربية', subtitle: 'Right to left (RTL)', flag: require('../../assets/icons/arabic.png') },
+      { code: 'en' as any, name: 'English', subtitle: 'Left to right (LTR)', flag: require('../../assets/icons/english.png') },
+      { code: 'ar' as any, name: 'العربية', subtitle: 'Right to left (RTL)', flag: require('../../assets/icons/arabic.png') },
     ];
 
     return (
@@ -517,24 +419,19 @@ const OnboardingScreen = () => {
               </TouchableOpacity>
             )}
 
-            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-              <TouchableOpacity
-                style={[
-                  styles.nextButton,
-                  { backgroundColor: colors.primary },
-                  currentIndex === 0 ? styles.nextButtonFull : null
-                ]}
-                onPress={handleNext}
-                onPressIn={handleButtonPressIn}
-                onPressOut={handleButtonPressOut}
-                activeOpacity={0.9}
-                disabled={saving}
-              >
-                <Text style={styles.nextButtonText}>
-                  {saving ? 'Saving...' : currentIndex === totalSteps - 1 ? 'Get Started' : 'Continue'}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
+            <TouchableOpacity
+              style={[
+                styles.nextButton,
+                { backgroundColor: colors.primary },
+                currentIndex === 0 || currentIndex === totalSteps - 1 ? styles.nextButtonFull : null
+              ]}
+              onPress={handleNext}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.nextButtonText}>
+                {currentIndex === totalSteps - 1 ? 'Get Started' : 'Continue'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
