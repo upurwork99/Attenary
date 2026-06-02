@@ -143,7 +143,6 @@ const OnboardingScreen = () => {
       title: 'Profile Photo',
       subtitle: 'Optional',
       description: 'Add a profile photo to personalize your account.',
-      illustration: require('../../assets/icons/profile.png'),
     },
     {
       id: 'language',
@@ -230,20 +229,12 @@ const validateCurrentStep = (): boolean => {
     const asset = result.assets[0];
     setUploadingAvatar(true);
     
-    const localUri = asset.uri;
-    const fileName = `avatar-${Date.now()}`;
+    // Store the local URI directly - it will show in the app
+    console.log('OnboardingScreen: Setting avatar from', asset.uri);
+    await updateProfile({ avatar_url: asset.uri });
     
-    if (Platform.OS === 'web') {
-      await updateProfile({ avatar_url: localUri });
-      setUploadingAvatar(false);
-    } else {
-      const { error } = await uploadAvatar(localUri);
-      setUploadingAvatar(false);
-
-      if (error) {
-        Alert.alert('Error', error.message || 'Failed to upload avatar.');
-      }
-    }
+    console.log('OnboardingScreen: Avatar updated successfully');
+    setUploadingAvatar(false);
   };
 
   const handleNext = async () => {

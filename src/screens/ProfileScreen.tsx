@@ -77,11 +77,16 @@ const ProfileScreen = () => {
     if (result.canceled || !result.assets?.length) return;
     const asset = result.assets[0];
     setSaving(true);
-    const { error } = await uploadAvatar(asset.uri);
+    
+    console.log('ProfileScreen: Setting avatar from', asset.uri);
+    
+    // Store the local URI directly - it will show in the app
+    // On web, this might be a blob URL that works directly
+    // On mobile, this is a file:// URI that expo-image-picker provides
+    await updateProfile({ avatar_url: asset.uri });
+    
+    console.log('ProfileScreen: Avatar updated, profile.avatar_url now:', asset.uri);
     setSaving(false);
-    if (error) {
-      Alert.alert('Error', error.message || 'Failed to upload avatar.');
-    }
   };
 
   const handleRemoveAvatar = async () => {

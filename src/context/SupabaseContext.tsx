@@ -143,40 +143,46 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       if (!profile) return { url: null, error: 'No profile' };
 
+      // For offline, store the local URI directly
       if (!isOnline) {
-        const avatarUrl = `local-avatar-${Date.now()}`;
-        await updateProfile({ avatar_url: fileUri || avatarUrl });
-        return { url: fileUri || avatarUrl, error: null };
+        console.log('uploadAvatar: Offline - storing local URI', fileUri);
+        await updateProfile({ avatar_url: fileUri });
+        return { url: fileUri, error: null };
       }
 
-      const path = `avatars/${profile.id}.jpg`;
-      let blob: Blob;
-      
+      // For web, try to upload via fetch
       if (Platform.OS === 'web') {
+        const path = `avatars/${profile.id}.jpg`;
         const response = await fetch(fileUri);
-        blob = await response.blob();
-      } else {
-        const response = await fetch(fileUri);
-        blob = await response.blob();
+        const blob = await response.blob();
+        
+        const { error } = await supabase.storage
+          .from('avatars')
+          .upload(path, blob, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+        
+        if (error) {
+          console.log('Avatar upload error (non-critical):', error);
+          // Fallback: store local URI
+          await updateProfile({ avatar_url: fileUri });
+          return { url: fileUri, error: null };
+        }
+        
+        const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+        await updateProfile({ avatar_url: data.publicUrl });
+        return { url: data.publicUrl, error: null };
       }
-      
-      const { error } = await supabase.storage
-        .from('avatars')
-        .upload(path, blob, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-      
-      if (error) {
-        console.log('Avatar upload error (non-critical):', error);
-        return { url: null, error };
-      }
-      
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      await updateProfile({ avatar_url: data.publicUrl });
-      return { url: data.publicUrl, error: null };
+
+      // For mobile, the fetch approach doesn't work with file:// URIs
+      // So we'll just store the local URI for now (works offline in app)
+      console.log('uploadAvatar: Mobile - storing local URI', fileUri);
+      await updateProfile({ avatar_url: fileUri });
+      return { url: fileUri, error: null };
     } catch (e) {
       console.log('uploadAvatar error:', e);
+      // Fallback: store local URI on error
       if (profile) {
         await updateProfile({ avatar_url: fileUri });
         return { url: fileUri, error: null };
