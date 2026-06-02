@@ -1,13 +1,7 @@
 import { registerRootComponent } from 'expo';
 import App from './App';
 
-function injectClerkCaptcha() {
-  if (typeof document === 'undefined') return;
-  if (document.getElementById('clerk-captcha')) return;
-  const div = document.createElement('div');
-  div.id = 'clerk-captcha';
-  document.body.appendChild(div);
-}
-
-injectClerkCaptcha();
+// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
+// It also ensures that whether you load the app in Expo Go or in a native build,
+// the environment is set up appropriately
 registerRootComponent(App);
