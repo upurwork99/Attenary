@@ -64,13 +64,6 @@ const MoreScreen = () => {
       screen: 'About',
     },
     {
-      id: 'privacy',
-      title: t('more.privacy'),
-      subtitle: t('more.privacySubtitle'),
-      icon: '🔒',
-      screen: 'About',
-    },
-    {
       id: 'coffee',
       title: t('more.coffee'),
       subtitle: t('more.coffeeSubtitle'),

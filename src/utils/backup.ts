@@ -8,7 +8,7 @@ import { BackupSchema, BackupData, BACKUP_SCHEMA_VERSION, BACKUP_STORAGE_KEY, Re
 
 export { BackupSchema, RestorePreview, computeRecordChecksum };
 
-const APP_VERSION = '2.6.47';
+const APP_VERSION = '3.23.7';
 
 async function calculateChecksum(data: string): Promise<string> {
   if (Platform.OS === 'web') {
@@ -18,8 +18,8 @@ async function calculateChecksum(data: string): Promise<string> {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   } else {
-    const { CryptoDigestAlgorithm, CryptoEncoding } = require('expo-crypto');
-    const { digestStringAsync } = require('expo-crypto');
+    const { CryptoDigestAlgorithm, CryptoEncoding } = await import('expo-crypto');
+    const { digestStringAsync } = await import('expo-crypto');
     return digestStringAsync(
       CryptoDigestAlgorithm.SHA256,
       data,

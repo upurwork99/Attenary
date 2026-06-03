@@ -17,7 +17,6 @@ import MoreScreen from '../screens/MoreScreen';
 import BackupScreen from '../screens/BackupScreen';
 import RestoreBackupScreen from '../screens/RestoreBackupScreen';
 import AboutScreen from '../screens/AboutScreen';
-import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import BuyMeCoffeeScreen from '../screens/BuyMeCoffeeScreen';
 import SessionDetailsScreen from '../screens/SessionDetailsScreen';
 import LanguagesScreen from '../screens/LanguagesScreen';
@@ -58,7 +57,6 @@ type MainStackParamList = {
   CheckInModal: undefined;
   CheckOutModal: undefined;
   About: undefined;
-  PrivacyPolicy: undefined;
   BuyMeCoffee: undefined;
   SessionDetails: { sessionId: string };
   Languages: undefined;
@@ -138,7 +136,6 @@ const Navigation = () => {
           }}
         />
         <Stack.Screen name="About" component={AboutScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
         <Stack.Screen name="BuyMeCoffee" component={BuyMeCoffeeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SessionDetails" component={SessionDetailsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Languages" component={LanguagesScreen} options={{ headerShown: false }} />
