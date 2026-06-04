@@ -1,203 +1,214 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Platform, Pressable } from 'react-native';
-import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, StyleSheet, Platform, Pressable, Dimensions } from 'react-native';
+import Svg, { Path, Circle, Line, Polyline, Rect } from 'react-native-svg';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  Easing,
+} from 'react-native-reanimated';
 
-// Navbar colors - Green Dark Theme
-const NAVBAR_COLORS = {
-  activeContainer: 'rgba(30, 80, 50, 0.6)',   // Dark green pill background
-  activeIcon: '#4ade80',        // Bright green text/icon
-  inactiveIcon: '#888',         // Inactive grey
-  navbarBackground: '#111111',  // Slightly lighter black
-  navbarBorder: '#222',         // Border color
-  hoverBackground: '#1a1a1a',   // Hover state background
-  iconFill: 'rgba(74, 222, 128, 0.2)', // Subtle fill for active icons
-};
+const NAV_BG = 'rgba(0,0,0,0.45)';
+const BORDER_COLOR = '#363636';
+const ACCENT = '#8b6cef';
+const PILL_RADIUS = 24;
+const BTN_SIZE = 48;
+const NAV_PADDING = 8;
+const PANEL_RADIUS = 32;
+const SLIDE_DURATION = 400;
+const SLIDE_EASING = Easing.bezier(0.25, 1, 0.5, 1);
 
-// Animation duration matching the CSS transition (0.4s = 400ms)
-const ANIMATION_DURATION = 400;
-
-// Tab Item Component
-interface TabItemProps {
-  icon: React.ReactNode;
-  isActive: boolean;
-  onPress: () => void;
-}
-
-const TabItem: React.FC<TabItemProps> = ({ icon, isActive, onPress }) => {
-  // Track hover state for non-active items
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Determine background color based on state
-  const getBackgroundColor = () => {
-    if (isActive) return NAVBAR_COLORS.activeContainer;
-    if (isHovered) return NAVBAR_COLORS.hoverBackground;
-    return 'transparent';
-  };
-
-  return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={() => setIsHovered(true)}
-      onPressOut={() => setIsHovered(false)}
-      style={({ pressed }) => [
-        styles.tabItemTouchable,
-        pressed && styles.tabItemPressed,
-      ]}
-    >
-      <View
-        style={[
-          styles.tabItem,
-          {
-            backgroundColor: getBackgroundColor(),
-          },
-        ]}
-      >
-        {icon}
-      </View>
-    </Pressable>
-  );
-};
-
-// Icon Components matching the HTML design
-const HomeIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+const HomePath = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
     <Path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
     <Polyline points="9 22 9 12 15 12 15 22" />
   </Svg>
 );
-
-const SearchIcon = ({ color }: { color: string }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Circle cx="11" cy="11" r="8" />
-    <Line x1="21" y1="21" x2="16.65" y2="16.65" />
+const DailyLogPath = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <Rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <Line x1="16" y1="2" x2="16" y2="6" />
+    <Line x1="8" y1="2" x2="8" y2="6" />
+    <Line x1="3" y1="10" x2="21" y2="10" />
   </Svg>
 );
-
-const StatsIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
-    <Path d="M22 12A10 10 0 0 0 12 2v10z" />
-  </Svg>
-);
-
-const HistoryIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Circle cx="12" cy="12" r="10" />
-    <Polyline points="12 6 12 12 16 14" />
-  </Svg>
-);
-
-const ProfileIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <Circle cx="12" cy="7" r="4" />
-  </Svg>
-);
-
-// Clock Icon for Time Clock
-const ClockIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Circle cx="12" cy="12" r="10" />
-    <Polyline points="12 6 12 12 16 14" />
-  </Svg>
-);
-
-// Document Icon for Daily Log
-const DocumentIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+const MonthlyReportPath = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
     <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
     <Polyline points="14 2 14 8 20 8" />
     <Line x1="16" y1="13" x2="8" y2="13" />
     <Line x1="16" y1="17" x2="8" y2="17" />
-    <Polyline points="10 9 9 9 8 9" />
+    <Line x1="10" y1="9" x2="8" y2="9" />
   </Svg>
 );
-
-// Chart Icon for Monthly Report
-const ChartIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+const HistoryPath = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <Circle cx="12" cy="12" r="10" />
+    <Polyline points="12 6 12 12 16 14" />
+  </Svg>
+);
+const AnalyticsPath = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
     <Line x1="18" y1="20" x2="18" y2="10" />
     <Line x1="12" y1="20" x2="12" y2="4" />
     <Line x1="6" y1="20" x2="6" y2="14" />
   </Svg>
 );
-
-// Analytics Icon
-const AnalyticsIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
-    <Path d="M22 12A10 10 0 0 0 12 2v10z" />
-  </Svg>
-);
-
-// User Icon for Profile
-const UserIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+const ProfilePath = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
     <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
     <Circle cx="12" cy="7" r="4" />
   </Svg>
 );
-
-// More Icon
-const MoreIcon = ({ color, filled }: { color: string; filled: boolean }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill={filled ? NAVBAR_COLORS.iconFill : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+const MorePath = () => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
     <Circle cx="12" cy="5" r="1.5" />
     <Circle cx="12" cy="12" r="1.5" />
     <Circle cx="12" cy="19" r="1.5" />
   </Svg>
 );
 
-// Tab configuration
-const getTabs = () => [
-  { name: 'TimeClock', icon: HomeIcon },
-  { name: 'DailyLog', icon: DocumentIcon },
-  { name: 'MonthlyReport', icon: ChartIcon },
-  { name: 'History', icon: HistoryIcon },
-  { name: 'Analytics', icon: AnalyticsIcon },
-  { name: 'Profile', icon: UserIcon },
-  { name: 'More', icon: MoreIcon },
-];
+const TAB_NAMES = ['TimeClock', 'DailyLog', 'MonthlyReport', 'History', 'Analytics', 'Profile', 'More'];
+const ICON_PATHS = [HomePath, DailyLogPath, MonthlyReportPath, HistoryPath, AnalyticsPath, ProfilePath, MorePath];
+
+type TabConfig = { name: string; Icon: React.FC };
 
 interface CustomTabBarProps {
-  state: any;
-  navigation: any;
+  state: { index: number };
+  navigation: { emit: (e: any) => any; navigate: (name: string) => void };
 }
 
 const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, navigation }) => {
-  const tabs = getTabs();
-  
+  const tabs: TabConfig[] = TAB_NAMES.map((name, i) => ({ name, Icon: ICON_PATHS[i] }));
+
+  const [layouts, setLayouts] = useState<{ left: number; top: number; width: number; height: number }[]>([]);
+  const activeIndex = state.index ?? 0;
+
+  const indLeft = useSharedValue(0);
+  const indTop = useSharedValue(0);
+  const indWidth = useSharedValue(0);
+  const indHeight = useSharedValue(0);
+  const indScaleX = useSharedValue(1);
+  const indScaleY = useSharedValue(1);
+
+  const updateIndicator = useCallback(
+    (index: number, animate: boolean) => {
+      if (!layouts[index]) return;
+      const l = layouts[index];
+
+      if (!animate) {
+        indLeft.value = l.left;
+        indTop.value = l.top;
+        indWidth.value = l.width;
+        indHeight.value = l.height;
+        indScaleX.value = 1;
+        indScaleY.value = 1;
+        return;
+      }
+
+      const cfg = { duration: SLIDE_DURATION, easing: SLIDE_EASING };
+      indWidth.value = withTiming(l.width, cfg);
+      indHeight.value = withTiming(l.height, cfg);
+      indLeft.value = withTiming(l.left, cfg);
+      indTop.value = withTiming(l.top, cfg);
+
+      indScaleX.value = withSequence(
+        withTiming(1.15, { duration: 120, easing: Easing.linear }),
+        withTiming(0.9, { duration: 100, easing: Easing.linear }),
+        withTiming(1, { duration: 160, easing: Easing.linear })
+      );
+      indScaleY.value = withSequence(
+        withTiming(0.85, { duration: 120, easing: Easing.linear }),
+        withTiming(1.05, { duration: 100, easing: Easing.linear }),
+        withTiming(1, { duration: 160, easing: Easing.linear })
+      );
+    },
+    [layouts]
+  );
+
+  useEffect(() => {
+    updateIndicator(activeIndex, false);
+  }, []);
+
+  useEffect(() => {
+    updateIndicator(activeIndex, true);
+  }, [activeIndex, updateIndicator]);
+
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', () => {
+      updateIndicator(activeIndex, false);
+    });
+    return () => sub?.remove();
+  }, [activeIndex, updateIndicator]);
+
+  useEffect(() => {
+    const hasLayout = layouts.length > 0 && layouts[activeIndex];
+    if (!hasLayout) return;
+    updateIndicator(activeIndex, false);
+  }, [layouts, activeIndex, updateIndicator]);
+
+  const animatedIndicator = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: indLeft.value,
+    top: indTop.value,
+    width: indWidth.value,
+    height: indHeight.value,
+    borderRadius: PILL_RADIUS,
+    backgroundColor: ACCENT,
+    transform: [{ scaleX: indScaleX.value }, { scaleY: indScaleY.value }] as any,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 8,
+  }));
+
   return (
     <View style={styles.navbar}>
+      <Animated.View style={animatedIndicator} pointerEvents="none" />
       <View style={styles.navbarContainer}>
-        {state.routes.map((route: any, index: number) => {
-          const { name } = route;
-          const tab = tabs.find(t => t.name === name);
-          if (!tab) return null;
-
-          const isFocused = state.index === index;
-          const IconComponent = tab.icon;
-          const color = isFocused ? NAVBAR_COLORS.activeIcon : NAVBAR_COLORS.inactiveIcon;
+        {tabs.map((tab, index) => {
+          const isFocused = activeIndex === index;
 
           const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(name);
+            if (isFocused) return;
+            const event = navigation.emit({ type: 'tabPress', target: tab.name, canPreventDefault: true });
+            if (!event.defaultPrevented) {
+              navigation.navigate(tab.name);
             }
           };
 
           return (
-            <View key={name} style={[styles.tabWrapper, { flex: 1 }]}>
-              <TabItem
-                icon={<IconComponent color={color} filled={isFocused} />}
-                isActive={isFocused}
-                onPress={onPress}
-              />
-            </View>
+            <Pressable
+              key={tab.name}
+              onPress={onPress}
+              style={({ pressed }) => [styles.tabWrapper, pressed && styles.tabItemPressed]}
+            >
+              <View
+                style={styles.tabItem}
+                onLayout={(e) => {
+                  const { x, y, width, height } = e.nativeEvent.layout;
+                  setLayouts((prev) => {
+                    const copy = [...prev];
+                    copy[index] = { left: x, top: y, width, height };
+                    return copy;
+                  });
+                }}
+              >
+                <Animated.View
+                  style={[
+                    styles.iconInner,
+                    {
+                      opacity: isFocused ? 1 : 0.4,
+                      transform: [{ scale: isFocused ? 1.12 : 1 }, { translateY: isFocused ? -1 : 0 }],
+                    },
+                  ]}
+                >
+                  <tab.Icon />
+                </Animated.View>
+              </View>
+            </Pressable>
           );
         })}
       </View>
@@ -207,17 +218,19 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, navigation }) => {
 
 const styles = StyleSheet.create({
   navbar: {
-    backgroundColor: NAVBAR_COLORS.navbarBackground,
-    paddingVertical: 15,
-    paddingHorizontal: 15,
+    backgroundColor: NAV_BG,
+    paddingVertical: NAV_PADDING,
+    paddingHorizontal: NAV_PADDING,
     borderTopWidth: 1,
-    borderTopColor: NAVBAR_COLORS.navbarBorder,
+    borderTopColor: BORDER_COLOR,
+    borderRadius: PANEL_RADIUS,
+    position: 'relative',
     ...Platform.select({
       ios: {
-        shadowColor: '#4ade80',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.05,
-        shadowRadius: 30,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.6,
+        shadowRadius: 50,
       },
       android: {
         elevation: 20,
@@ -230,20 +243,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   tabWrapper: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabItemTouchable: {
+  tabItem: {
+    height: BTN_SIZE,
+    width: BTN_SIZE,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: PILL_RADIUS,
   },
   tabItemPressed: {
     opacity: 0.8,
   },
-  tabItem: {
-    flexDirection: 'row',
+  iconInner: {
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 30,
+    justifyContent: 'center',
   },
 });
 
