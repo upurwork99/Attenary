@@ -89,8 +89,20 @@ export const Provider = ({ children }: AppProviderProps) => {
       if (dataString) {
         try {
           const parsed = JSON.parse(dataString);
-          setAppData({
-            sessions: parsed.sessions || [],
+          let sessions = parsed.sessions || [];
+          
+          // Close any orphaned active sessions from previous app sessions
+          // (prevents auto-starting a session on app open from stored data)
+          const hasActive = sessions.some((s: any) => s.checkOutTime === null);
+          if (hasActive) {
+            const now = Date.now();
+            sessions = sessions.map((s: any) =>
+              s.checkOutTime === null ? { ...s, checkOutTime: now } : s,
+            );
+          }
+          
+          const correctedData: AppData = {
+            sessions,
             employeeName: parsed.employeeName || '',
             email: parsed.email || '',
             jobTitle: parsed.jobTitle || '',
@@ -98,7 +110,13 @@ export const Provider = ({ children }: AppProviderProps) => {
             onboardingCompleted: parsed.onboardingCompleted || false,
             onboardingProgress: parsed.onboardingProgress || { currentStep: 0, completedSteps: [], lastVisited: Date.now() },
             appSettings: parsed.appSettings || { theme: 'dark', notifications: true },
-          });
+          };
+          
+          setAppData(correctedData);
+          
+          // Persist the corrected sessions immediately
+          const dataStringToSave = JSON.stringify(correctedData);
+          await setStorageItem(STORAGE_KEY, dataStringToSave);
         } catch {
           setStorageError('Using default settings.');
         }

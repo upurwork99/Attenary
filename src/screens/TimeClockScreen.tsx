@@ -12,6 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
+import { useSupabase } from '../context/SupabaseContext';
 import { useTabBarVisibility } from '../context/TabBarVisibilityContext';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import { getDateString } from '../utils/timeUtils';
@@ -38,18 +39,35 @@ const CheckOutIcon = ({ color = colors.textFaint, size = 22 }: { color?: string;
 );
 
 const TimeClockScreen = () => {
-  const { appData, checkIn, checkOut } = useApp();
+  const { appData, checkIn, checkOut, setEmployeeName } = useApp();
+  const { profile } = useSupabase();
   const { t, isRTL, language } = useLanguage();
   const { setVisible } = useTabBarVisibility();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [employeeName, setEmployeeName] = useState(appData.employeeName);
+  const [employeeName, setEmployeeNameLocal] = useState('');
 
   // Bottom sheet state
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const slideAnim = React.useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
+  // Sync employee name from Supabase profile (non-critical, silent)
+  useEffect(() => {
+    const syncName = async () => {
+      const name = profile?.full_name?.trim();
+      if (!name) return;
+      const current = appData.employeeName?.trim();
+      if (name !== current) {
+        await setEmployeeName(name);
+        setEmployeeNameLocal(name);
+      } else {
+        setEmployeeNameLocal(current || '');
+      }
+    };
+    syncName();
+  }, [profile?.full_name, appData.employeeName, setEmployeeName]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -62,8 +80,11 @@ const TimeClockScreen = () => {
   }, []);
 
   useEffect(() => {
-    setEmployeeName(appData.employeeName);
-  }, [appData.employeeName]);
+    const name = profile?.full_name?.trim();
+    if (name) {
+      setEmployeeNameLocal(name);
+    }
+  }, [profile?.full_name]);
 
   const activeSession = appData.sessions.find((s: any) => s.checkOutTime === null);
   const todaySessions = appData.sessions.filter((s: any) => getDateString(s.checkInTime) === getDateString(Date.now()));

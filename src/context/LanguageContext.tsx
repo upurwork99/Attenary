@@ -170,6 +170,8 @@ const translations: Record<Language, Record<string, string>> = {
     'dailylog.sessions': 'Sessions',
     'dailylog.done': 'Done',
     'dailylog.hourlyActivity': 'Hourly Activity',
+    'dailylog.totalSessions': 'Total Sessions',
+    'dailylog.swipeView': 'Swipe View',
     'dailylog.sessionsSuffix': 'sessions',
     'dailylog.sessionsPerHour': 'sessions per hour',
     
@@ -500,6 +502,8 @@ const translations: Record<Language, Record<string, string>> = {
     'dailylog.sessions': 'الجلسات',
     'dailylog.done': 'مكتمل',
     'dailylog.hourlyActivity': 'النشاط كل ساعة',
+    'dailylog.totalSessions': 'إجمالي الجلسات',
+    'dailylog.swipeView': 'اسحب',
     'dailylog.sessionsSuffix': 'جلسات',
     'dailylog.sessionsPerHour': 'جلسات في الساعة',
     

@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Image,
-  Animated,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { useTabBarVisibility } from '../context/TabBarVisibilityContext';
@@ -31,7 +29,8 @@ const CheckInModal = ({ navigation, route }: any) => {
 
   useEffect(() => {
     setVisible(false);
-  }, []);
+    return () => setVisible(true);
+  }, [setVisible]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
@@ -43,35 +42,41 @@ const CheckInModal = ({ navigation, route }: any) => {
     return unsubscribe;
   }, [navigation, setVisible]);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setModalVisible(false);
     setVisible(true);
-    navigation.goBack();
-  };
+    navigation?.goBack?.();
+  }, [navigation, setVisible]);
 
   useEffect(() => {
     if (!appData.employeeName) {
       setStatus('error');
       setMessage(t('modal.profileRequired'));
+    }
+  }, [appData.employeeName, t]);
+
+  const handleConfirmCheckIn = async () => {
+    const alreadyActive = appData.sessions.some((s: any) => s.checkOutTime === null);
+    if (alreadyActive) {
+      setStatus('success');
+      setMessage(
+        t('modal.checkedInSuccess').replace('{name}', appData.employeeName || ''),
+      );
       return;
     }
 
-    const run = async () => {
-      setStatus('processing');
-      try {
-        await checkIn();
-        setStatus('success');
-        setMessage(
-          t('modal.checkedInSuccess').replace('{name}', appData.employeeName),
-        );
-      } catch (err: any) {
-        setStatus('error');
-        setMessage(err?.message || t('modal.checkInError'));
-      }
-    };
-
-    run();
-  }, [appData.employeeName]);
+    setStatus('processing');
+    try {
+      await checkIn();
+      setStatus('success');
+      setMessage(
+        t('modal.checkedInSuccess').replace('{name}', appData.employeeName || ''),
+      );
+    } catch (err: any) {
+      setStatus('error');
+      setMessage(err?.message || t('modal.checkInError'));
+    }
+  };
 
   if (!modalVisible) return null;
 
@@ -82,11 +87,34 @@ const CheckInModal = ({ navigation, route }: any) => {
           {status === 'success' ? <SuccessIcon size={44} /> : <HeaderIcon size={28} />}
         </View>
         <Text style={styles.modalTitle}>{t('modal.checkInTitle')}</Text>
-        <Text style={styles.modalMessage}>{message}</Text>
+        <Text style={styles.modalMessage}>
+          {status === 'idle' ? t('modal.checkInConfirm') || 'Confirm check-in to start tracking your time.' : message}
+        </Text>
+
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.button} onPress={closeModal} activeOpacity={0.85}>
-            <Text style={styles.buttonText}>{t('modal.close')}</Text>
-          </TouchableOpacity>
+          {status === 'idle' || status === 'error' ? (
+            <>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonPrimary]}
+                onPress={handleConfirmCheckIn}
+                activeOpacity={0.85}
+                disabled={!appData.employeeName}
+              >
+                <Text style={styles.buttonText}>{t('modal.confirm') || 'Confirm'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSecondary]}
+                onPress={closeModal}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.buttonTextSecondary}>{t('modal.cancel') || 'Cancel'}</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity style={[styles.button, styles.buttonPrimary]} onPress={closeModal} activeOpacity={0.85}>
+              <Text style={styles.buttonText}>{t('modal.close')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
@@ -140,16 +168,29 @@ const styles = StyleSheet.create({
   },
   footer: {
     width: '100%',
+    gap: spacing.sm,
   },
   button: {
-    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
+  buttonPrimary: {
+    backgroundColor: colors.primary,
+  },
+  buttonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   buttonText: {
     fontSize: fonts.sizes.lg,
     color: colors.bgMain,
+    fontWeight: fonts.weights.bold as any,
+  },
+  buttonTextSecondary: {
+    fontSize: fonts.sizes.lg,
+    color: colors.textSecondary,
     fontWeight: fonts.weights.bold as any,
   },
 });
