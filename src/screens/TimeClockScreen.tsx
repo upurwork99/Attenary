@@ -8,76 +8,54 @@ import {
   Alert,
   TextInput,
   StatusBar,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
-import { colors, spacing, borderRadius, fonts, shadows, glassStyles } from '../theme/colors';
-import { formatTime, formatHoursMinutes, getTodayString, getDateString, formatTimeReversed } from '../utils/timeUtils';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
+import { getDateString } from '../utils/timeUtils';
+import Svg, { Path, Circle, Rect, Line, Polyline } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 // ═══════════════════════════════════════════════════════════════════
-// FUTURISTIC 2026 GLASSMORPHISM ICONS
+// ICONS (matched to HTML template SVGs)
 // ═══════════════════════════════════════════════════════════════════
 
-const ClockIcon = ({ color = colors.textMuted, size = 24 }: { color?: string; size?: number }) => (
+const CheckInIcon = ({ color = '#ffffff', size = 22 }: { color?: string; size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth="2" opacity={0.8} />
-    <Path 
-      d="M12 7v5l3 3" 
-      stroke={color} 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    />
+    <Line x1="5" y1="12" x2="19" y2="12" stroke={color} strokeWidth="2.5" />
+    <Polyline points="12 5 19 12 12 19" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-const CheckInIcon = ({ size = 28 }: { size?: number }) => (
+const CheckOutIcon = ({ color = colors.textFaint, size = 22 }: { color?: string; size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Circle cx="12" cy="12" r="10" stroke={colors.primary} strokeWidth="2" />
-    <Path 
-      d="M8 12l3 3 5-6" 
-      stroke={colors.primary} 
-      strokeWidth="2.5" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-const CheckOutIcon = ({ size = 28 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Rect x="6" y="6" width="12" height="12" rx="2" stroke={colors.danger} strokeWidth="2" />
-    <Path 
-      d="M9 12h6" 
-      stroke={colors.danger} 
-      strokeWidth="2.5" 
-      strokeLinecap="round" 
-    />
+    <Rect x="5" y="5" width="14" height="14" rx="4" stroke={color} strokeWidth="2" />
   </Svg>
 );
 
 const TimeClockScreen = () => {
-  const { appData, loading, checkIn, checkOut } = useApp();
-  const navigation: any = useNavigation();
+  const { appData, checkIn, checkOut } = useApp();
   const { t, isRTL, language } = useLanguage();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [nameModalVisible, setNameModalVisible] = useState(false);
   const [employeeName, setEmployeeName] = useState(appData.employeeName);
 
+  // Bottom sheet state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedReason, setSelectedReason] = useState('');
+  const [customReason, setCustomReason] = useState('');
+  const slideAnim = React.useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    const dateTimer = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 60000);
+    const dateTimer = setInterval(() => setCurrentDate(new Date()), 60000);
     return () => clearInterval(dateTimer);
   }, []);
 
@@ -86,7 +64,7 @@ const TimeClockScreen = () => {
   }, [appData.employeeName]);
 
   const activeSession = appData.sessions.find((s: any) => s.checkOutTime === null);
-  const todaySessions = appData.sessions.filter((s: any) => getDateString(s.checkInTime) === getTodayString());
+  const todaySessions = appData.sessions.filter((s: any) => getDateString(s.checkInTime) === getDateString(Date.now()));
 
   let totalSeconds = 0;
   todaySessions.forEach((s: any) => {
@@ -94,43 +72,88 @@ const TimeClockScreen = () => {
     totalSeconds += Math.floor((end - s.checkInTime) / 1000);
   });
 
-  const handleCheckIn = () => {
-    navigation.navigate('CheckInModal');
-  };
+  const [liveSessionSeconds, setLiveSessionSeconds] = useState(0);
+  const [liveTotalSeconds, setLiveTotalSeconds] = useState(totalSeconds);
 
-  const handleCheckOut = async () => {
+  useEffect(() => {
     if (!activeSession) {
-      Alert.alert(t('common.error'), t('timeclock.noSessionsToday'));
-      return;
+      setLiveSessionSeconds(0);
     }
-    navigation.navigate('CheckOutModal');
+  }, [activeSession]);
+
+  useEffect(() => {
+    setLiveTotalSeconds(totalSeconds);
+  }, [totalSeconds]);
+
+  // Bottom sheet animation
+  useEffect(() => {
+    if (modalVisible) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [modalVisible]);
+
+  const handleCheckIn = async () => {
+    await checkIn();
   };
 
-  const saveEmployeeName = () => {
-    if (!employeeName.trim()) {
-      Alert.alert(t('common.error'), t('timeclock.pleaseEnterName'));
-      return;
-    }
-    setNameModalVisible(false);
+  const handleCheckOutPress = () => {
+    if (!activeSession) return;
+    setModalVisible(true);
+    setSelectedReason('');
+    setCustomReason('');
+  };
+
+  const finalizeCheckOut = async () => {
+    const reason = selectedReason || customReason.trim() || undefined;
+    await checkOut(reason);
+    setModalVisible(false);
+    setSelectedReason('');
+    setCustomReason('');
+  };
+
+  const skipAndFinish = async () => {
+    await checkOut('Skipped');
+    setModalVisible(false);
+    setSelectedReason('');
+    setCustomReason('');
+  };
+
+  const selectReason = (reason: string) => {
+    setSelectedReason(reason);
+    setCustomReason('');
+  };
+
+  const formatHMS = (totalSecs: number) => {
+    const h = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
+    const m = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
+    const s = String(totalSecs % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  };
+
+  const formatHM = (totalSecs: number) => {
+    const h = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
+    const m = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
+    return `${h}:${m}`;
   };
 
   const formatCurrentTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true 
-    });
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
   };
 
   const formatCurrentDate = (date: Date) => {
     const locale = language === 'ar' ? 'ar-SA' : 'en-US';
-    return date.toLocaleDateString(locale, { 
-      weekday: 'long',
-      month: 'long', 
-      day: 'numeric',
-      year: 'numeric'
-    });
+    return date.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   };
 
   return (
@@ -142,9 +165,7 @@ const TimeClockScreen = () => {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* ═══════════════════════════════════════════════════════════
-            HEADER SECTION - Time & Date Display
-            ═══════════════════════════════════════════════════════════ */}
+        {/* Top Bar Header */}
         <View style={styles.headerSection}>
           <View style={styles.greetingContainer}>
             <Text style={styles.greetingText}>
@@ -158,176 +179,158 @@ const TimeClockScreen = () => {
             </Text>
             <Text style={styles.employeeName}>{employeeName || t('timeclock.employee')}</Text>
           </View>
-          
-          {/* Time Display Card */}
-          <View style={styles.timeCard}>
-            <View style={styles.timeGlow} />
-            <Text style={styles.currentTime}>{formatCurrentTime(currentTime)}</Text>
-            <Text style={styles.currentDate}>{formatCurrentDate(currentDate)}</Text>
-          </View>
         </View>
 
-        {/* ═══════════════════════════════════════════════════════════
-            STATS SECTION - Glass Cards
-            ═══════════════════════════════════════════════════════════ */}
-        <View style={styles.statsContainer}>
-          <View style={[styles.statCard, styles.statCardPrimary]}>
-            <View style={styles.statIconContainer}>
-              <ClockIcon color={colors.primary} size={20} />
+        {/* Unified Glassmorphism Clock Panel */}
+        <View style={styles.clockPanel}>
+          <View style={styles.clockGlow} />
+          <Text style={styles.clockTime}>{formatCurrentTime(currentTime)}</Text>
+          <Text style={styles.clockDate}>{formatCurrentDate(currentDate)}</Text>
+        </View>
+
+        {/* State Metrics Component Grid */}
+        <View style={styles.metricsGrid}>
+          {/* Dynamic Session Status Card */}
+          <View style={[styles.metricCard, styles.metricCardPrimary]}>
+            <View style={styles.metricHeader}>
+              <View style={[styles.statusDot, { backgroundColor: activeSession ? colors.textSuccess : colors.textWarning }]} />
+              <Text style={styles.metricLabel}>{t('timeclock.sessionStatus')}</Text>
             </View>
-            <Text style={styles.statLabel}>{t('timeclock.totalHours')}</Text>
-            <Text style={[styles.statValue, styles.statValuePrimary]}>
-              {formatHoursMinutes(totalSeconds)}
+            <Text style={[styles.metricValue, { color: activeSession ? colors.textSuccess : colors.white }]}>
+              {activeSession ? t('timeclock.activeSession') : t('timeclock.idle')}
             </Text>
-          </View>
-          
-          <View style={styles.statRow}>
-            <View style={[styles.statCard, styles.statCardSmall]}>
-              <View style={styles.statIndicator} />
-              <Text style={styles.statLabel}>{t('dailylog.active')}</Text>
-              <Text style={[
-                styles.statValueSmall, 
-                activeSession && styles.statValueActive
-              ]}>
-                {activeSession ? t('timeclock.activeSession') : t('timeclock.idle')}
-              </Text>
-            </View>
             
-            <View style={[styles.statCard, styles.statCardSmall]}>
-              <Text style={styles.statLabel}>{t('timeclock.todaySessions')}</Text>
-              <Text style={styles.statValueSmall}>{todaySessions.length}</Text>
+            {activeSession && (
+              <View style={styles.sessionTimerContainer}>
+                <View style={styles.sessionTimerRow}>
+                  <View>
+                    <Text style={styles.sessionTimerLabel}>{t('timeclock.sessionTime')}</Text>
+                    <Text style={styles.sessionTimerValue}>{formatHMS(liveSessionSeconds)}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Cumulative Analytics Aggregator */}
+          <View style={[styles.metricCard, styles.metricCardSecondary]}>
+            <Text style={styles.metricLabel}>{t('timeclock.todaySessions')}</Text>
+            <Text style={styles.metricValue}>{todaySessions.length}</Text>
+            <View style={styles.totalShiftRow}>
+              <Text style={styles.totalShiftLabel}>{t('timeclock.totalShift')}</Text>
+              <Text style={styles.totalShiftValue}>{formatHM(liveTotalSeconds)}</Text>
             </View>
           </View>
         </View>
 
-        {/* ═══════════════════════════════════════════════════════════
-            ACTION BUTTONS - Neon Accented
-            ═══════════════════════════════════════════════════════════ */}
+        {/* Interactive Button UI Engine */}
         <View style={styles.buttonsContainer}>
+          {/* Check In Button */}
           <TouchableOpacity 
-            style={[
-              styles.actionButton,
-              styles.checkInButton,
-              activeSession && styles.buttonDisabled
-            ]} 
+            style={[styles.primaryButton, activeSession && styles.buttonDisabled]}
             onPress={handleCheckIn}
             disabled={!!activeSession}
-            activeOpacity={0.8}
+            activeOpacity={0.9}
           >
-            <View style={styles.buttonContent}>
-              <View style={[
-                styles.buttonIconContainer,
-                isRTL && styles.buttonIconContainerRTL
-              ]}>
-                <CheckInIcon size={24} />
+            <View style={styles.buttonContentRow}>
+              <View style={[styles.buttonTextCol, isRTL && styles.buttonTextColRTL]}>
+                <Text style={styles.primaryButtonTitle}>{t('timeclock.checkIn')}</Text>
+                <Text style={styles.primaryButtonSubtitle}>{t('timeclock.initializeTracking')}</Text>
               </View>
-              <View style={styles.buttonTextContainer}>
-                <Text style={styles.buttonTitle}>
-                  {activeSession ? t('timeclock.alreadyCheckedIn') : t('timeclock.checkIn')}
-                </Text>
-                <Text style={styles.buttonSubtitle}>
-                  {activeSession ? t('timeclock.activeSession') : t('timeclock.startTracking')}
-                </Text>
+              <View style={[styles.iconCircle, isRTL && styles.iconCircleRTL]}>
+                <CheckInIcon size={22} color={colors.textOnAccent} />
               </View>
             </View>
           </TouchableOpacity>
 
+          {/* Check Out Button */}
           <TouchableOpacity 
             style={[
-              styles.actionButton,
-              styles.checkOutButton,
+              styles.secondaryButton,
               !activeSession && styles.buttonDisabled
-            ]} 
-            onPress={handleCheckOut}
+            ]}
+            onPress={handleCheckOutPress}
             disabled={!activeSession}
-            activeOpacity={0.8}
+            activeOpacity={0.9}
           >
-            <View style={styles.buttonContent}>
-              <View style={[
-                styles.buttonIconContainer,
-                styles.buttonIconContainerDanger,
-                isRTL && styles.buttonIconContainerRTL
-              ]}>
-                <CheckOutIcon size={24} />
-              </View>
-              <View style={styles.buttonTextContainer}>
-                <Text style={[styles.buttonTitle, styles.buttonTitleDanger]}>{t('timeclock.checkOut')}</Text>
-                <Text style={styles.buttonSubtitle}>
-                  {activeSession ? t('timeclock.endYourWorkSession') : t('timeclock.noActiveSession')}
+            <View style={styles.buttonContentRow}>
+              <View style={[styles.buttonTextCol, isRTL && styles.buttonTextColRTL]}>
+                <Text style={[styles.secondaryButtonTitle, { color: activeSession ? colors.colorRed : colors.textFaint }]}>
+                  {t('timeclock.checkOut')}
                 </Text>
+                <Text style={[styles.secondaryButtonSubtitle, { color: activeSession ? colors.colorRedText : colors.textFaint }]}>
+                  {activeSession ? t('timeclock.clickToFinish') : t('timeclock.noActiveSession')}
+                </Text>
+              </View>
+              <View style={[styles.iconCircleSecondary, isRTL && styles.iconCircleRTL]}>
+                <CheckOutIcon size={22} color={activeSession ? colors.colorRed : colors.textFaint} />
               </View>
             </View>
           </TouchableOpacity>
-
-
         </View>
 
-        {/* ═══════════════════════════════════════════════════════════
-            ACTIVE SESSION - Glowing Panel
-            ═══════════════════════════════════════════════════════════ */}
-        {activeSession && (
-          <View style={styles.activeSection}>
-            <View style={styles.activeSectionHeader}>
-              <View style={styles.pulseContainer}>
-                <View style={styles.pulseDot} />
-                <View style={styles.pulseRing} />
-              </View>
-              <Text style={styles.activeSectionTitle}>{t('timeclock.activeSession')}</Text>
-            </View>
-            
-            <View style={styles.activeSessionCard}>
-              <View style={styles.activeSessionInfo}>
-                <Text style={styles.activeSessionName}>
-                  {employeeName || t('timeclock.employee')}
-                </Text>
-                <Text style={styles.activeSessionTime}>
-                  {t('timeclock.startedAt')} {formatTimeReversed(new Date(activeSession.checkInTime))}
-                </Text>
-              </View>
-              
-              <View style={styles.activeTimerContainer}>
-                <Text style={styles.activeTimerLabel}>{t('dailylog.duration')}</Text>
-                <Text style={styles.activeTimer}>
-                  {formatTime(Math.floor((Date.now() - activeSession.checkInTime) / 1000))}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* ═══════════════════════════════════════════════════════════
-            NAME MODAL - Glass Modal
-            ═══════════════════════════════════════════════════════════ */}
-        {nameModalVisible && (
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHandle} />
-              <Text style={styles.modalTitle}>{t('timeclock.enterName')}</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder={t('timeclock.namePlaceholder')}
-                placeholderTextColor={colors.textMuted}
-                value={employeeName}
-                onChangeText={setEmployeeName}
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity 
-                  style={styles.modalCancelButton} 
-                  onPress={() => setNameModalVisible(false)}
-                >
-                  <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.modalConfirmButton} 
-                  onPress={saveEmployeeName}
-                >
-                  <Text style={styles.modalConfirmText}>{t('common.save')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
       </ScrollView>
+
+      {/* ═══════════════════════════════════════════════════════════
+          CHECKOUT REASON BOTTOM-SHEET MODAL (HTML exact clone)
+          ═══════════════════════════════════════════════════════════ */}
+      {modalVisible && (
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={styles.modalBackdrop} onPress={() => setModalVisible(false)} />
+          <Animated.View style={[styles.bottomSheet, { transform: [{ translateY: slideAnim }] }]}>
+            {/* Decorative Drag Handle Bar */}
+            <View style={styles.dragHandle} />
+
+            <Text style={styles.modalTitle}>{t('timeclock.endSessionTitle') || 'End Current Active Session'}</Text>
+            <Text style={styles.modalSubtitle}>{t('timeclock.endSessionSubtitle') || 'Specify a checkout reason or type your own below.'}</Text>
+            
+            {/* Interactive Reason Tags Grid Layout */}
+            <View style={styles.reasonTagsGrid}>
+              {['Shift Completed', 'Lunch/Rest Break', 'External Meeting', 'Off-site Duty'].map((reason) => (
+                <TouchableOpacity
+                  key={reason}
+                  style={[
+                    styles.reasonTag,
+                    selectedReason === reason && styles.reasonTagSelected,
+                  ]}
+                  onPress={() => selectReason(reason)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.reasonTagText,
+                    selectedReason === reason && styles.reasonTagTextSelected,
+                  ]}>{reason}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Custom Reason Text Input Area */}
+            <View style={styles.customReasonContainer}>
+              <Text style={styles.customReasonLabel}>{t('timeclock.customReasonLabel') || 'Or write your own reason:'}</Text>
+              <TextInput
+                style={styles.customReasonInput}
+                placeholder={t('timeclock.customReasonPlaceholder') || 'Type your custom checkout reason here...'}
+                placeholderTextColor={colors.textMuted}
+                value={customReason}
+                onChangeText={(text) => {
+                  setCustomReason(text);
+                  if (text.trim()) setSelectedReason('');
+                }}
+              />
+            </View>
+
+            {/* Action Footer Split Structure */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.modalSkipBtn} onPress={skipAndFinish} activeOpacity={0.9}>
+                <Text style={styles.modalSkipBtnText}>Skip & Finish</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSubmitBtn} onPress={finalizeCheckOut} activeOpacity={0.9}>
+                <Text style={styles.modalSubmitBtnText}>Submit Reason</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      )}
     </View>
   );
 };
@@ -341,375 +344,381 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.xl,
+    padding: spacing.lg,
     paddingTop: spacing.huge,
-    paddingBottom: 120, // Extra padding to ensure content is visible above tab bar
+    paddingBottom: 140,
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // HEADER SECTION
-  // ═══════════════════════════════════════════════════════════════
+  // Header
   headerSection: {
     marginBottom: spacing.xxxl,
+    paddingHorizontal: spacing.xs,
   },
   greetingContainer: {
     marginBottom: spacing.xl,
   },
   greetingText: {
-    fontSize: fonts.sizes.lg,
-    color: colors.textSecondary,
-    fontWeight: '500' as const,
-    marginBottom: spacing.xs,
+    fontSize: fonts.sizes.xs,
+    color: colors.textMuted,
+    fontWeight: fonts.weights.bold as any,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: spacing.sm,
   },
   employeeName: {
-    fontSize: fonts.sizes.hero,
-    fontWeight: '700' as const,
-    color: colors.textPrimary,
-    letterSpacing: -1,
-  },
-  timeCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.card,
-    padding: spacing.xxl,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    position: 'relative',
-    overflow: 'hidden',
-    ...shadows.card,
-  },
-  timeGlow: {
-    position: 'absolute',
-    top: -50,
-    left: '50%',
-    marginLeft: -100,
-    width: 200,
-    height: 100,
-    backgroundColor: colors.primaryGlow,
-    borderRadius: 100,
-    opacity: 0.3,
-  },
-  currentTime: {
-    fontSize: fonts.sizes.massive,
-    fontWeight: '900' as const,
-    color: colors.textPrimary,
-    fontFamily: 'monospace',
-    letterSpacing: 2,
-    marginBottom: spacing.sm,
-  },
-  currentDate: {
-    fontSize: fonts.sizes.md,
-    color: colors.textSecondary,
-    fontWeight: '500' as const,
+    fontSize: fonts.sizes.xl,
+    fontWeight: fonts.weights.black as any,
+    color: colors.white,
+    letterSpacing: -0.5,
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // STATS SECTION
-  // ═══════════════════════════════════════════════════════════════
-  statsContainer: {
-    marginBottom: spacing.xxl,
-  },
-  statCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.card,
-    padding: spacing.xl,
+  // Clock Panel (glass-panel-card exact)
+  clockPanel: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    marginBottom: 24,
     ...shadows.glass,
   },
-  statCardPrimary: {
-    borderColor: colors.borderAccent,
-    marginBottom: spacing.md,
-  },
-  statCardSmall: {
-    flex: 1,
-    padding: spacing.lg,
-    alignItems: 'center',
-  },
-  statRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  statIconContainer: {
-    marginBottom: spacing.sm,
-  },
-  statIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.textMuted,
-    marginBottom: spacing.sm,
-  },
-  statLabel: {
-    fontSize: fonts.sizes.sm,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
-    fontWeight: '500' as const,
-  },
-  statValue: {
-    fontSize: fonts.sizes.massive,
-    fontWeight: '700' as const,
-    color: colors.textPrimary,
-    fontFamily: 'monospace',
-  },
-  statValuePrimary: {
-    color: colors.primary,
-  },
-  statValueSmall: {
-    fontSize: fonts.sizes.xxl,
-    fontWeight: '700' as const,
-    color: colors.textPrimary,
-    fontFamily: 'monospace',
-  },
-  statValueActive: {
-    color: colors.primary,
-  },
-
-  // ═══════════════════════════════════════════════════════════════
-  // BUTTONS SECTION
-  // ═══════════════════════════════════════════════════════════════
-  buttonsContainer: {
-    marginBottom: spacing.xxl,
-    gap: spacing.md,
-  },
-  actionButton: {
-    borderRadius: borderRadius.button,
-    padding: spacing.lg,
-    overflow: 'hidden',
-    ...shadows.button,
-  },
-  checkInButton: {
-    backgroundColor: colors.primary,
-    borderWidth: 1.5,
-    borderColor: colors.primaryLight,
-  },
-  checkOutButton: {
-    backgroundColor: colors.bgCard,
-    borderWidth: 1.5,
-    borderColor: colors.danger,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  buttonIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 255, 136, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: spacing.lg,
-  },
-  buttonIconContainerDanger: {
-    backgroundColor: 'rgba(255, 51, 102, 0.15)',
-  },
-  buttonIconContainerRTL: {
-    marginLeft: 0,
-    marginRight: spacing.lg,
-  },
-  buttonTextContainer: {
-    flex: 1,
-  },
-  buttonTitle: {
-    fontSize: fonts.sizes.xl,
-    fontWeight: '700' as const,
-    color: colors.bgMain,
-    marginBottom: 2,
-  },
-  buttonTitleDanger: {
-    color: colors.danger,
-  },
-  buttonSubtitle: {
-    fontSize: fonts.sizes.sm,
-    color: 'rgba(0, 0, 0, 0.6)',
-  },
-  secondaryButton: {
-    backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.button,
-    padding: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  secondaryButtonText: {
-    fontSize: fonts.sizes.md,
-    fontWeight: '600' as const,
-    color: colors.textSecondary,
-  },
-
-  // ═══════════════════════════════════════════════════════════════
-  // ACTIVE SESSION SECTION
-  // ═══════════════════════════════════════════════════════════════
-  activeSection: {
-    backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.card,
-    padding: spacing.xl,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    ...shadows.neonGlowSubtle,
-  },
-  activeSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  pulseContainer: {
-    width: 20,
-    height: 20,
-    marginRight: spacing.md,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pulseDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-  },
-  pulseRing: {
+  clockGlow: {
     position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    opacity: 0.5,
+    top: -48,
+    right: -48,
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: 'rgba(83,223,221,0.08)',
   },
-  activeSectionTitle: {
-    fontSize: fonts.sizes.sm,
-    fontWeight: '700' as const,
-    color: colors.primary,
+  clockTime: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: colors.white,
+    fontFamily: 'monospace',
+    letterSpacing: 1,
+  },
+  clockDate: {
+    marginTop: spacing.sm,
+    fontSize: fonts.sizes.xs,
+    color: colors.textSuccess,
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
-  activeSessionCard: {
+
+  // Metrics Grid
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.xxl,
+  },
+  metricCard: {
+    flex: 1,
+    padding: 16,
+    minHeight: 110,
+  },
+  metricCardPrimary: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    ...shadows.glass,
+  },
+  metricCardSecondary: {
+    backgroundColor: 'rgba(255,255,255,0.01)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  metricLabel: {
+    fontSize: fonts.sizes.xs,
+    color: colors.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  metricValue: {
+    marginTop: spacing.sm,
+    fontSize: fonts.sizes.xl,
+    fontWeight: '900',
+    color: colors.white,
+  },
+  sessionTimerContainer: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  sessionTimerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
   },
-  activeSessionInfo: {
-    flex: 1,
-  },
-  activeSessionName: {
-    fontSize: fonts.sizes.xl,
-    fontWeight: '700' as const,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  activeSessionTime: {
-    fontSize: fonts.sizes.sm,
-    color: colors.textSecondary,
-  },
-  activeTimerContainer: {
-    alignItems: 'flex-end',
-  },
-  activeTimerLabel: {
+  sessionTimerLabel: {
     fontSize: fonts.sizes.xs,
-    color: colors.textMuted,
+    color: colors.textSuccess,
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: spacing.xs,
   },
-  activeTimer: {
-    fontSize: fonts.sizes.xxl,
-    fontWeight: '700' as const,
-    color: colors.primary,
+  sessionTimerValue: {
+    fontSize: fonts.sizes.md,
+    color: colors.textSuccess,
+    fontWeight: '900',
     fontFamily: 'monospace',
   },
+  totalShiftRow: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  totalShiftLabel: {
+    fontSize: fonts.sizes.xs,
+    color: colors.textSecondary,
+  },
+  totalShiftValue: {
+    fontSize: fonts.sizes.xs,
+    color: colors.textSuccess,
+    fontWeight: '900',
+  },
 
-  // ═══════════════════════════════════════════════════════════════
-  // MODAL STYLES
+  // Buttons
+  buttonsContainer: {
+    gap: spacing.md,
+    marginBottom: spacing.xxl,
+  },
+  buttonDisabled: {
+    opacity: 0.4,
+  },
+  buttonContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  buttonTextCol: {
+    flex: 1,
+    paddingRight: spacing.lg,
+  },
+  buttonTextColRTL: {
+    paddingRight: 0,
+    paddingLeft: spacing.lg,
+  },
+  primaryButton: {
+    backgroundColor: colors.accent,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  primaryButtonTitle: {
+    fontSize: fonts.sizes.md,
+    fontWeight: '900',
+    color: colors.textOnAccent,
+    letterSpacing: 0.3,
+  },
+  primaryButtonSubtitle: {
+    marginTop: spacing.sm,
+    fontSize: fonts.sizes.xs,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  secondaryButton: {
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    padding: 16,
+  },
+  secondaryButtonTitle: {
+    fontSize: fonts.sizes.md,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  secondaryButtonSubtitle: {
+    marginTop: spacing.sm,
+    fontSize: fonts.sizes.xs,
+    fontWeight: '600',
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  iconCircleRTL: {
+    marginLeft: 0,
+    marginRight: spacing.lg,
+  },
+  iconCircleSecondary: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  // BOTTOM SHEET MODAL (exact HTML clone)
   // ═══════════════════════════════════════════════════════════════
   modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     zIndex: 1000,
+    justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.xxl,
-    padding: spacing.xxl,
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.glassElevated,
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
-  modalHandle: {
-    width: 40,
+  bottomSheet: {
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 32,
+    maxHeight: SCREEN_HEIGHT * 0.85,
+    ...shadows.glass,
+  },
+  dragHandle: {
+    width: 48,
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.border,
     alignSelf: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: fonts.sizes.xxl,
-    fontWeight: '700' as const,
-    color: colors.textPrimary,
-    marginBottom: spacing.xl,
+    fontSize: fonts.sizes.xl,
+    fontWeight: '900',
+    color: colors.white,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
-  modalInput: {
-    backgroundColor: colors.bgElevated,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    color: colors.textPrimary,
-    fontSize: fonts.sizes.md,
+  modalSubtitle: {
+    fontSize: fonts.sizes.xs,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 20,
+    fontWeight: '600',
   },
-  modalButtons: {
+  reasonTagsGrid: {
     flexDirection: 'row',
-    gap: spacing.md,
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
   },
-  modalCancelButton: {
+  reasonTag: {
     flex: 1,
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.button,
-    padding: spacing.lg,
-    alignItems: 'center',
+    minWidth: '45%',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: colors.base05,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  modalCancelText: {
-    fontSize: fonts.sizes.md,
-    fontWeight: '600' as const,
-    color: colors.textSecondary,
-  },
-  modalConfirmButton: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.button,
-    padding: spacing.lg,
     alignItems: 'center',
   },
-  modalConfirmText: {
-    fontSize: fonts.sizes.md,
-    fontWeight: '700' as const,
-    color: colors.bgMain,
+  reasonTagSelected: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: colors.borderLight,
+  },
+  reasonTagText: {
+    fontSize: fonts.sizes.xs,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  reasonTagTextSelected: {
+    color: colors.accent,
+  },
+  customReasonContainer: {
+    marginBottom: 20,
+  },
+  customReasonLabel: {
+    fontSize: fonts.sizes.xs,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  customReasonInput: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
+    color: colors.textPrimary,
+    fontSize: fonts.sizes.xs,
+    fontWeight: '700',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalSkipBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalSkipBtnText: {
+    fontSize: fonts.sizes.xs,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  modalSubmitBtn: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalSubmitBtnText: {
+    fontSize: fonts.sizes.xs,
+    fontWeight: '700',
+    color: colors.textOnAccent,
   },
 });
 
