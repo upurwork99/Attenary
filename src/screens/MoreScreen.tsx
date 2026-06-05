@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
 import * as Sharing from 'expo-sharing';
+import Svg, { Path } from 'react-native-svg';
 
 const ChevronRightIcon = ({ size = 20 }: { size?: number }) => (
   <Text style={{ fontSize: size, color: colors.textFaint, fontWeight: '600' }}>›</Text>
@@ -31,6 +32,18 @@ const CoffeeIcon = ({ size = 20 }: { size?: number }) => (
 
 const ShareIcon = ({ size = 20 }: { size?: number }) => (
   <Image source={require('../../assets/icons/analytics.png')} style={{ width: size, height: size }} resizeMode="contain" />
+);
+
+const AboutIcon = ({ size = 20 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={colors.textAccent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+  </Svg>
+);
+
+const PrivacyIcon = ({ size = 20 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={colors.textAccent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25z" />
+  </Svg>
 );
 
 const MoreScreen = () => {
@@ -112,6 +125,20 @@ const MoreScreen = () => {
       icon: <ShareIcon size={20} />,
       onPress: handleShare,
     },
+    {
+      id: 'about',
+      title: t('more.about'),
+      subtitle: t('more.aboutSubtitle'),
+      icon: <AboutIcon size={20} />,
+      screen: 'About',
+    },
+    {
+      id: 'privacy',
+      title: t('more.privacy'),
+      subtitle: t('more.privacySubtitle'),
+      icon: <PrivacyIcon size={20} />,
+      onPress: () => Alert.alert(t('common.comingSoon'), 'Privacy Policy will be available soon.'),
+    },
   ];
 
   const handlePress = (item: any) => {
@@ -154,25 +181,33 @@ const MoreScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerTitle}>Attenary</Text>
+          <Text style={styles.footerSubtitle}>Time Tracking Made Simple</Text>
+        </View>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: colors.bgMain 
+  container: {
+    flex: 1,
+    backgroundColor: colors.bgMain,
+    justifyContent: 'center',
   },
-  content: { 
-    flex: 1 
+  content: {
+    flex: 1,
   },
   scrollContent: {
     paddingBottom: spacing.huge,
     paddingTop: spacing.xl,
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   headerSection: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
   },
   headerLabel: {
@@ -181,8 +216,10 @@ const styles = StyleSheet.create({
     color: colors.textAccent,
     textTransform: 'uppercase',
     letterSpacing: 2,
+    textAlign: 'center',
   },
   glassPanel: {
+    flex: 1,
     backgroundColor: colors.bgCard,
     borderRadius: 28,
     borderWidth: 1,
@@ -193,12 +230,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 32,
     elevation: 8,
+    marginHorizontal: spacing.md,
+    justifyContent: 'space-between',
   },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginHorizontal: spacing.xs,
+    marginVertical: 2,
   },
   navItemBorder: {
     borderBottomWidth: 1,
@@ -213,7 +255,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
   },
   navItemContent: {
     flex: 1,
@@ -232,6 +274,26 @@ const styles = StyleSheet.create({
   chevronContainer: {
     marginLeft: spacing.sm,
     opacity: 0.6,
+  },
+  footer: {
+    width: '100%',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    paddingTop: spacing.lg,
+  },
+  footerTitle: {
+    fontSize: fonts.sizes.md,
+    fontWeight: fonts.weights.semibold as any,
+    color: colors.textPrimary,
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+  },
+  footerSubtitle: {
+    fontSize: fonts.sizes.sm,
+    color: colors.textMuted,
+    fontWeight: fonts.weights.medium as any,
   },
 });
 

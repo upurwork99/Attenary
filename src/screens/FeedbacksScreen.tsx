@@ -41,10 +41,6 @@ const FeedbacksIcon = ({ size = 36 }: { size?: number }) => (
   <Image source={require('../../assets/icons/feedback.png')} style={{ width: size, height: size }} resizeMode="contain" />
 );
 
-const EmailFieldIcon = ({ size = 18 }: { size?: number }) => (
-  <Image source={require('../../assets/icons/email.png')} style={{ width: size, height: size }} resizeMode="contain" />
-);
-
 const CheckIcon = ({ size = 16, color = colors.primary }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M9 12l2 2 4-4" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -64,7 +60,6 @@ const FeedbacksScreen = () => {
   const { t } = useLanguage();
   const { profile, createFeedback } = useSupabase();
   const [feedback, setFeedback] = useState('');
-  const [email, setEmail] = useState('');
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [retryAttempts, setRetryAttempts] = useState(0);
@@ -98,11 +93,6 @@ const FeedbacksScreen = () => {
     closeSheet();
   };
 
-  const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
   const handleSubmit = async () => {
     if (!feedback.trim()) {
       Alert.alert(t('common.error'), t('feedbacks.pleaseEnterFeedback'));
@@ -114,8 +104,8 @@ const FeedbacksScreen = () => {
       return;
     }
 
-    if (email.trim() && !isValidEmail(email.trim())) {
-      Alert.alert(t('common.error'), t('feedbacks.validEmail'));
+    if (!profile?.email) {
+      Alert.alert(t('common.error'), 'Please complete your profile with an email address before submitting feedback.');
       return;
     }
 
@@ -128,7 +118,7 @@ const FeedbacksScreen = () => {
     try {
       const { error } = await createFeedback({
         type: feedbackType,
-        email: email.trim() || profile?.email,
+        email: profile.email,
         content: feedback.trim(),
         metadata: {
           userAgent: 'Attenary Mobile App',
@@ -150,7 +140,6 @@ const FeedbacksScreen = () => {
             text: t('common.ok'),
             onPress: () => {
               setFeedback('');
-              setEmail('');
               setFeedbackType('general');
               navigation.goBack();
             },
@@ -196,85 +185,65 @@ const FeedbacksScreen = () => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <BackIcon />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('feedbacks.title')}</Text>
-        <View style={styles.headerSpacer} />
+      onPress={() => navigation.goBack()}
+      activeOpacity={0.7}
+    >
+      <BackIcon />
+    </TouchableOpacity>
+    <Text style={styles.headerTitle}>{t('feedbacks.title')}</Text>
+    <View style={styles.headerSpacer} />
+  </View>
+
+  <KeyboardAvoidingView
+    style={styles.content}
+    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  >
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* Icon Section */}
+      <View style={styles.iconSection}>
+        <View style={styles.iconContainer}>
+          <FeedbacksIcon size={36} />
+        </View>
+        <Text style={styles.title}>{t('feedbacks.weValueYourFeedback')}</Text>
+        <Text style={styles.subtitle}>
+          {t('feedbacks.helpUsImprove')}
+        </Text>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.content}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+      {/* Feedback Type Selection */}
+      <View style={styles.section}>
+        <Text style={styles.label}>{t('feedbacks.feedbackType')}</Text>
+        <TouchableOpacity
+          style={styles.typeSelector}
+          onPress={openSheet}
+          activeOpacity={0.7}
         >
-          {/* Icon Section */}
-          <View style={styles.iconSection}>
-            <View style={styles.iconContainer}>
-              <FeedbacksIcon size={36} />
-            </View>
-            <Text style={styles.title}>{t('feedbacks.weValueYourFeedback')}</Text>
-            <Text style={styles.subtitle}>
-              {t('feedbacks.helpUsImprove')}
-            </Text>
+          <View style={styles.typeSelectorLeft}>
+            <View style={styles.typeDot} />
+            <Text style={styles.typeSelectorText}>{t(selectedType.labelKey)}</Text>
           </View>
+          <Text style={styles.typeSelectorArrow}>›</Text>
+        </TouchableOpacity>
+      </View>
 
-          {/* Feedback Type Selection */}
-          <View style={styles.section}>
-            <Text style={styles.label}>{t('feedbacks.feedbackType')}</Text>
-            <TouchableOpacity
-              style={styles.typeSelector}
-              onPress={openSheet}
-              activeOpacity={0.7}
-            >
-              <View style={styles.typeSelectorLeft}>
-                <View style={styles.typeDot} />
-                <Text style={styles.typeSelectorText}>{t(selectedType.labelKey)}</Text>
-              </View>
-              <Text style={styles.typeSelectorArrow}>›</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Email Input */}
-          <View style={styles.section}>
-            <Text style={styles.label}>{t('feedbacks.email')}</Text>
-            <View style={styles.inputWithIcon}>
-              <View style={styles.inputIconContainer}>
-                <EmailFieldIcon size={16} />
-              </View>
-              <TextInput
-                style={styles.inputWithIconInner}
-                placeholder={t('feedbacks.emailPlaceholder')}
-                placeholderTextColor={colors.textMuted}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
-
-          {/* Feedback Input */}
-          <View style={styles.section}>
-            <Text style={styles.label}>{t('feedbacks.yourFeedback')}</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder={t('feedbacks.placeholder')}
-              placeholderTextColor={colors.textMuted}
-              value={feedback}
-              onChangeText={setFeedback}
-              multiline
-              numberOfLines={5}
-              textAlignVertical="top"
-            />
-          </View>
+      {/* Feedback Input */}
+      <View style={styles.section}>
+        <Text style={styles.label}>{t('feedbacks.yourFeedback')}</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder={t('feedbacks.placeholder')}
+          placeholderTextColor={colors.textMuted}
+          value={feedback}
+          onChangeText={setFeedback}
+          multiline
+          numberOfLines={5}
+          textAlignVertical="top"
+        />
+      </View>
 
           {/* Submit Button */}
           <TouchableOpacity
@@ -480,24 +449,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '300',
     color: colors.textMuted,
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-  },
-  inputIconContainer: {
-    marginRight: spacing.sm,
-  },
-  inputWithIconInner: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    fontSize: fonts.sizes.md,
-    color: colors.textPrimary,
   },
   input: {
     backgroundColor: colors.bgCard,
