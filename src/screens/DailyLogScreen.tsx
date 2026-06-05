@@ -47,7 +47,7 @@ const PLOT_W = CHART_W - CHART_PAD_LEFT - CHART_PAD_RIGHT;
 const PLOT_Y = CHART_PAD_TOP;
 const PLOT_H = CHART_H - CHART_PAD_TOP - CHART_PAD_BOT;
 const NUM_HOURS = 24;
-const MAX_Y = 5;
+const DEFAULT_MAX_Y = 5;
 const BAR_PERCENT = 0.55;
 
 const PURPLE = '#a374f9';
@@ -113,9 +113,17 @@ const ActivityChart: React.FC<ActivityChartProps> = ({ data }) => {
   const topY = CHART_PAD_TOP;
   const plotHeight = bottomY - topY;
 
+  const maxY = useMemo(() => {
+    const values = data ?? [];
+    const peak = values.reduce((m, v) => Math.max(m, v), 0);
+    if (peak <= DEFAULT_MAX_Y) return DEFAULT_MAX_Y;
+    const rounded = Math.ceil(peak / 5) * 5;
+    return rounded;
+  }, [data]);
+
   const yItems: { v: number; y: number }[] = [];
-  for (let v = 0; v <= MAX_Y; v++) {
-    const y = bottomY - (v / MAX_Y) * plotHeight;
+  for (let v = 0; v <= maxY; v++) {
+    const y = bottomY - (v / maxY) * plotHeight;
     yItems.push({ v, y });
   }
 
@@ -152,7 +160,7 @@ const ActivityChart: React.FC<ActivityChartProps> = ({ data }) => {
           if (idx >= 0 && data[idx] > 0) {
             setTouchedIndex(idx);
             const cx = PLOT_X + idx * SLOT_W + SLOT_W / 2;
-            const barH = Math.max((data[idx] / MAX_Y) * plotHeight, 0);
+            const barH = Math.max((data[idx] / (maxY || 1)) * plotHeight, 0);
             const cy = bottomY - barH;
             setTooltip({ cx, cy, value: data[idx] });
           } else {
@@ -217,7 +225,7 @@ const ActivityChart: React.FC<ActivityChartProps> = ({ data }) => {
 
             {data.map((val, i) => {
               const x = PLOT_X + i * SLOT_W + (SLOT_W - BAR_W) / 2;
-              const barH = Math.max((val / MAX_Y) * plotHeight, 0);
+              const barH = Math.max((val / (maxY || 1)) * plotHeight, 0);
               const y = bottomY - barH;
               return (
                 <Path
