@@ -7,11 +7,11 @@ exports.colors = {
     // Home page uses explicit new design tokens; non-home pages keep original aliases
     // ═══════════════════════════════════════════════════════════════════
     // Backward-compatible legacy aliases (preserved for non-home pages)
-    primary: '#00FF88', // Neon green (legacy)
-    primaryDark: '#00CC6A',
-    primaryLight: '#33FF9F',
-    primaryGlow: '#00FF8850',
-    primarySoft: '#00FF8820',
+    primary: '#8b6cef', // Purple primary (updated for onboarding)
+    primaryDark: '#7a5edf',
+    primaryLight: '#a691f5',
+    primaryGlow: 'rgba(139,108,239,0.32)',
+    primarySoft: 'rgba(139,108,239,0.12)',
     secondary: '#00E5FF',
     secondaryGlow: '#00E5FF40',
     danger: '#FF3366',
@@ -20,8 +20,8 @@ exports.colors = {
     warningGlow: '#FFD70040',
     info: '#00E5FF',
     infoGlow: '#00E5FF40',
-    success: '#00FF88',
-    successGlow: '#00FF8840',
+    success: '#53dfdd',
+    successGlow: '#53dfdd40',
     // Home Page Design Tokens (from HTML template)
     accent: '#8b6cef',
     accentDark: '#7a5edf',
@@ -170,14 +170,14 @@ exports.shadows = {
         elevation: 5,
     },
     neonGlow: {
-        shadowColor: '#00FF88',
+        shadowColor: '#8b6cef',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.5,
         shadowRadius: 15,
         elevation: 10,
     },
     neonGlowSubtle: {
-        shadowColor: '#00FF88',
+        shadowColor: '#8b6cef',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

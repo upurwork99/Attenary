@@ -52,6 +52,10 @@ const translations: Record<Language, Record<string, string>> = {
     'more.languagesSubtitle': 'Change app language',
     'more.backup': 'Backup',
     'more.backupSubtitle': 'Create a backup of your data',
+    'more.restoreBackup': 'Restore Backup',
+    'more.restoreBackupSubtitle': 'Restore your app data seamlessly',
+    'more.privacy': 'Privacy Policy',
+    'more.privacySubtitle': 'How we handle your data',
     'restoreBackup.title': 'Restore Backup',
     'restoreBackup.subtitle': 'Restore from a backup file',
     
@@ -66,6 +70,7 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Common
     'common.settings': 'Settings & Info',
+    'common.settingsInfo': 'Settings & Info',
     'common.version': 'Version',
     'common.save': 'Save',
     'common.cancel': 'Cancel',
@@ -427,6 +432,8 @@ const translations: Record<Language, Record<string, string>> = {
     'more.backupSubtitle': 'إنشاء نسخة احتياطية لبياناتك',
     'more.restoreBackup': 'استرداد النسخة الاحتياطية',
     'more.restoreBackupSubtitle': 'استرداد البيانات من ملف',
+    'more.privacy': 'سياسة الخصوصية',
+    'more.privacySubtitle': 'كيفية تعاملنا مع بياناتك',
     'restoreBackup.title': 'استرداد النسخة الاحتياطية',
     'restoreBackup.subtitle': 'استرداد البيانات من ملف النسخة الاحتياطية',
     
@@ -441,6 +448,7 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Common
     'common.settings': 'الإعدادات والمعلومات',
+    'common.settingsInfo': 'الإعدادات والمعلومات',
     'common.version': 'الإصدار',
     'common.save': 'حفظ',
     'common.cancel': 'إلغاء',

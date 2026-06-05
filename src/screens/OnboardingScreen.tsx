@@ -13,6 +13,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { useSupabase } from '../context/SupabaseContext';
@@ -52,6 +53,19 @@ const OnboardingScreen = () => {
   const [inputError, setInputError] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const { width, height } = useWindowDimensions();
+  const isSmallDevice = width <= 360;
+  const isLandscape = width > height;
+  const isTablet = Math.min(width, height) >= 768;
+  const isTabletLandscape = isTablet && isLandscape;
+  const illustrationSize = isTabletLandscape ? Math.min(340, height * 0.7) : isSmallDevice ? 140 : 220;
+  const avatarSize = isSmallDevice ? 80 : 100;
+  const paddingHorizontalResponsive = isSmallDevice ? spacing.md : spacing.xl;
+  const titleSizeResponsive = isSmallDevice ? fonts.sizes.xxl : fonts.sizes.hero;
+  const subtitleSizeResponsive = isSmallDevice ? fonts.sizes.lg : fonts.sizes.xl;
+
+  const styles = makeStyles({ illustrationSize, avatarSize, paddingHorizontalResponsive, isTabletLandscape, isLandscape, isSmallDevice, titleSizeResponsive, subtitleSizeResponsive });
 
   const navigation: any = useNavigation();
   const { profile, updateProfile, uploadAvatar, loading: supabaseLoading, completeOnboarding } = useSupabase();
@@ -508,50 +522,52 @@ const renderPhotoStep = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgMain },
-  scrollContent: { flexGrow: 1, paddingTop: 60, paddingBottom: 40, paddingHorizontal: spacing.xl },
-  progressBarContainer: { width: '100%', height: 4, backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: 2, marginBottom: spacing.lg },
-  progressBarFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
-  stepCounter: { alignItems: 'center', marginBottom: spacing.lg },
-  stepCounterText: { fontSize: fonts.sizes.sm, color: colors.textMuted, fontWeight: fonts.weights.medium as any },
-  contentContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  illustrationContainer: { alignItems: 'center', marginBottom: spacing.xl },
-  centeredIllustration: { width: 220, height: 220 },
-  textContent: { alignItems: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.md },
-  title: { fontSize: fonts.sizes.hero, fontWeight: fonts.weights.extrabold as any, color: colors.textPrimary, textAlign: 'center', lineHeight: 40, marginBottom: spacing.sm },
-  subtitle: { fontSize: fonts.sizes.xl, fontWeight: fonts.weights.semibold as any, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md },
-  description: { fontSize: fonts.sizes.md, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
-  inputContainer: { width: '100%', marginBottom: spacing.xl },
-  input: { width: '100%', height: 56, backgroundColor: colors.bgCard, borderRadius: borderRadius.lg, paddingHorizontal: spacing.lg, fontSize: fonts.sizes.lg, color: colors.textPrimary, borderWidth: 2, borderColor: colors.border },
-  inputError: { borderColor: '#ff4444' },
-  errorText: { color: '#ff4444', fontSize: fonts.sizes.sm, marginTop: spacing.sm, marginLeft: spacing.sm },
-  dotsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xl, gap: spacing.md },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  buttonsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.md, width: '100%' },
-  backButton: { paddingVertical: spacing.md, paddingHorizontal: spacing.xl, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border },
-  backButtonText: { fontSize: fonts.sizes.md, color: colors.textSecondary, fontWeight: fonts.weights.medium as any },
-  nextButton: { flex: 1, paddingVertical: spacing.md, paddingHorizontal: spacing.xl, borderRadius: borderRadius.lg, alignItems: 'center', justifyContent: 'center', minHeight: 56 },
-  nextButtonFull: { width: '100%' },
-  nextButtonText: { fontSize: fonts.sizes.lg, color: colors.bgMain, fontWeight: fonts.weights.bold as any },
-  languageContainer: { width: '100%', marginBottom: spacing.xl, paddingHorizontal: spacing.lg },
-  languageOption: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bgCard, borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 2, borderColor: colors.border },
-  languageOptionSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
-  languageFlag: { width: 40, height: 40, marginRight: spacing.md },
-  languageTextContainer: { flex: 1 },
-  languageName: { fontSize: fonts.sizes.lg, fontWeight: fonts.weights.semibold as any, color: colors.textPrimary },
-  languageNameSelected: { color: colors.primary },
-  languageSubtitle: { fontSize: fonts.sizes.sm, color: colors.textMuted, marginTop: 2 },
-  checkmarkContainer: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  checkmark: { color: colors.bgMain, fontSize: fonts.sizes.md, fontWeight: fonts.weights.bold as any },
-  photoContainer: { alignItems: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.lg },
-  avatarPreviewContainer: { marginBottom: spacing.lg },
-  avatarPreviewLarge: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: colors.primary },
-  avatarPlaceholderLarge: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.bgCard, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  uploadButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, borderRadius: borderRadius.full, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
-  uploadButtonText: { fontSize: fonts.sizes.sm, color: colors.bgMain, fontWeight: fonts.weights.medium as any, marginLeft: spacing.xs },
-  photoHint: { fontSize: fonts.sizes.sm, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.xs },
-  photoOptional: { fontSize: fonts.sizes.xs, color: colors.textMuted, textAlign: 'center' },
-});
+function makeStyles({ illustrationSize, avatarSize, paddingHorizontalResponsive, isTabletLandscape, isLandscape, isSmallDevice, titleSizeResponsive, subtitleSizeResponsive }: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bgMain },
+    scrollContent: { flexGrow: 1, paddingTop: isSmallDevice ? 40 : 60, paddingBottom: 40, paddingHorizontal: paddingHorizontalResponsive },
+    progressBarContainer: { width: '100%', height: 4, backgroundColor: 'rgba(255, 255, 255, 0.12)', borderRadius: 2, marginBottom: spacing.lg },
+    progressBarFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
+    stepCounter: { alignItems: 'center', marginBottom: spacing.lg },
+    stepCounterText: { fontSize: fonts.sizes.sm, color: colors.textMuted, fontWeight: fonts.weights.medium as any },
+    contentContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', flexDirection: isTabletLandscape ? 'row' : 'column' },
+    illustrationContainer: { alignItems: isTabletLandscape ? 'flex-start' : 'center', marginBottom: isTabletLandscape ? 0 : spacing.xl, marginRight: isTabletLandscape ? spacing.xl * 2 : 0 },
+    centeredIllustration: { width: illustrationSize, height: illustrationSize },
+    textContent: { flex: 1, alignItems: isTabletLandscape ? 'flex-start' : 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.md },
+    title: { fontSize: titleSizeResponsive, fontWeight: fonts.weights.extrabold as any, color: colors.textPrimary, textAlign: isTabletLandscape ? 'left' : 'center', lineHeight: 40, marginBottom: spacing.sm },
+    subtitle: { fontSize: subtitleSizeResponsive, fontWeight: fonts.weights.semibold as any, color: colors.textSecondary, textAlign: isTabletLandscape ? 'left' : 'center', marginBottom: spacing.md },
+    description: { fontSize: fonts.sizes.md, color: colors.textMuted, textAlign: isTabletLandscape ? 'left' : 'center', lineHeight: 22 },
+    inputContainer: { width: '100%', marginBottom: spacing.xl },
+    input: { width: '100%', height: 56, backgroundColor: colors.bgCard, borderRadius: borderRadius.lg, paddingHorizontal: spacing.lg, fontSize: fonts.sizes.lg, color: colors.textPrimary, borderWidth: 2, borderColor: colors.border },
+    inputError: { borderColor: '#ff4444' },
+    errorText: { color: '#ff4444', fontSize: fonts.sizes.sm, marginTop: spacing.sm, marginLeft: spacing.sm },
+    dotsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xl, gap: spacing.md },
+    dot: { width: 10, height: 10, borderRadius: 5 },
+    buttonsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.md, width: '100%' },
+    backButton: { paddingVertical: spacing.md, paddingHorizontal: spacing.xl, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border },
+    backButtonText: { fontSize: fonts.sizes.md, color: colors.textSecondary, fontWeight: fonts.weights.medium as any },
+    nextButton: { flex: 1, paddingVertical: spacing.md, paddingHorizontal: spacing.xl, borderRadius: borderRadius.lg, alignItems: 'center', justifyContent: 'center', minHeight: 56 },
+    nextButtonFull: { width: '100%' },
+    nextButtonText: { fontSize: fonts.sizes.lg, color: colors.bgMain, fontWeight: fonts.weights.bold as any },
+    languageContainer: { width: '100%', marginBottom: spacing.xl, paddingHorizontal: spacing.lg },
+    languageOption: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bgCard, borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 2, borderColor: colors.border },
+    languageOptionSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
+    languageFlag: { width: 40, height: 40, marginRight: spacing.md },
+    languageTextContainer: { flex: 1 },
+    languageName: { fontSize: fonts.sizes.lg, fontWeight: fonts.weights.semibold as any, color: colors.textPrimary },
+    languageNameSelected: { color: colors.primary },
+    languageSubtitle: { fontSize: fonts.sizes.sm, color: colors.textMuted, marginTop: 2 },
+    checkmarkContainer: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+    checkmark: { color: colors.bgMain, fontSize: fonts.sizes.md, fontWeight: fonts.weights.bold as any },
+    photoContainer: { alignItems: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.lg },
+    avatarPreviewContainer: { marginBottom: spacing.lg },
+    avatarPreviewLarge: { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, borderWidth: 2, borderColor: colors.primary },
+    avatarPlaceholderLarge: { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, backgroundColor: colors.bgCard, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+    uploadButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, borderRadius: borderRadius.full, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+    uploadButtonText: { fontSize: fonts.sizes.sm, color: colors.bgMain, fontWeight: fonts.weights.medium as any, marginLeft: spacing.xs },
+    photoHint: { fontSize: fonts.sizes.sm, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.xs },
+    photoOptional: { fontSize: fonts.sizes.xs, color: colors.textMuted, textAlign: 'center' },
+  });
+}
 
 export default OnboardingScreen;
