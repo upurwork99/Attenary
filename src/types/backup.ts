@@ -26,6 +26,7 @@ export interface BackupData {
     theme: 'light' | 'dark';
     notifications: boolean;
   };
+  hourRate: number;
 }
 
 export interface BackupSchema {

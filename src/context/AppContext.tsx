@@ -16,6 +16,7 @@ interface AppContextType {
   setEmail: (email: string) => Promise<void>;
   setJobTitle: (jobTitle: string) => Promise<void>;
   setDepartment: (department: string) => Promise<void>;
+  setHourRate: (rate: number) => Promise<void>;
   addSessions: (sessions: Session[]) => Promise<boolean>;
   completeOnboarding: () => Promise<void>;
   updateOnboardingProgress: (step: number) => Promise<void>;
@@ -62,6 +63,7 @@ export const Provider = ({ children }: AppProviderProps) => {
       theme: 'dark',
       notifications: true,
     },
+    hourRate: 0,
   });
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -111,6 +113,7 @@ export const Provider = ({ children }: AppProviderProps) => {
             onboardingCompleted: parsed.onboardingCompleted || false,
             onboardingProgress: parsed.onboardingProgress || { currentStep: 0, completedSteps: [], lastVisited: Date.now() },
             appSettings: parsed.appSettings || { theme: 'dark', notifications: true },
+            hourRate: parsed.hourRate ?? 0,
           };
           
           setAppData(correctedData);
@@ -160,6 +163,11 @@ export const Provider = ({ children }: AppProviderProps) => {
 
   const setDepartment = async (department: string) => {
     setAppData((prev) => ({ ...prev, department }));
+    await saveData();
+  };
+
+  const setHourRate = async (rate: number) => {
+    setAppData((prev) => ({ ...prev, hourRate: rate }));
     await saveData();
   };
 
@@ -451,7 +459,7 @@ export const Provider = ({ children }: AppProviderProps) => {
   const value = {
     appData, loading, storageError,
     saveData, loadData, checkIn, checkOut,
-    setEmployeeName, setEmail, setJobTitle, setDepartment,
+    setEmployeeName, setEmail, setJobTitle, setDepartment, setHourRate,
     addSessions, completeOnboarding, updateOnboardingProgress, resetOnboardingProgress,
     clearStorageError, deleteSession, updateSessionReason,
     createBackup, saveBackup, getStoredBackup,

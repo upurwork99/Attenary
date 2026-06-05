@@ -48,6 +48,7 @@ export function createBackup(appData: AppData): BackupSchema {
     onboardingCompleted: appData.onboardingCompleted,
     onboardingProgress: appData.onboardingProgress,
     appSettings: appData.appSettings,
+    hourRate: appData.hourRate,
   };
 
   const dataString = JSON.stringify(data);

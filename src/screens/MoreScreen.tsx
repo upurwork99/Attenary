@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
 import * as Sharing from 'expo-sharing';
-import Svg, { Path } from 'react-native-svg';
 
 const ChevronRightIcon = ({ size = 20 }: { size?: number }) => (
   <Text style={{ fontSize: size, color: colors.textFaint, fontWeight: '600' }}>›</Text>
@@ -34,17 +33,14 @@ const ShareIcon = ({ size = 20 }: { size?: number }) => (
   <Image source={require('../../assets/icons/analytics.png')} style={{ width: size, height: size }} resizeMode="contain" />
 );
 
-const AboutIcon = ({ size = 20 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={colors.textAccent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Path d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-  </Svg>
+const HourRateIcon = ({ size = 20 }: { size?: number }) => (
+  <Image source={require('../../assets/icons/report.png')} style={{ width: size, height: size }} resizeMode="contain" />
 );
 
-const PrivacyIcon = ({ size = 20 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={colors.textAccent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25z" />
-  </Svg>
+const BossExportIcon = ({ size = 20 }: { size?: number }) => (
+  <Image source={require('../../assets/icons/export.png')} style={{ width: size, height: size }} resizeMode="contain" />
 );
+
 
 const MoreScreen = () => {
   const navigation = useNavigation<any>();
@@ -126,18 +122,18 @@ const MoreScreen = () => {
       onPress: handleShare,
     },
     {
-      id: 'about',
-      title: t('more.about'),
-      subtitle: t('more.aboutSubtitle'),
-      icon: <AboutIcon size={20} />,
-      screen: 'About',
+      id: 'hourRate',
+      title: t('more.hourRate'),
+      subtitle: t('more.hourRateSubtitle'),
+      icon: <HourRateIcon size={20} />,
+      screen: 'HourRate',
     },
     {
-      id: 'privacy',
-      title: t('more.privacy'),
-      subtitle: t('more.privacySubtitle'),
-      icon: <PrivacyIcon size={20} />,
-      onPress: () => Alert.alert(t('common.comingSoon'), 'Privacy Policy will be available soon.'),
+      id: 'bossExport',
+      title: t('more.bossExport'),
+      subtitle: t('more.bossExportSubtitle'),
+      icon: <BossExportIcon size={20} />,
+      screen: 'BossExport',
     },
   ];
 

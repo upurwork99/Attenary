@@ -1,6 +1,3 @@
-I'll research both platforms and create a comprehensive migration guide for you.
-
-
 # Migration Guide: Moving an AI Agent from Supabase to Convex
 
 ## Table of Contents

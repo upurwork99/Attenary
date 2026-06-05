@@ -20,6 +20,8 @@ import BuyMeCoffeeScreen from '../screens/BuyMeCoffeeScreen';
 import SessionDetailsScreen from '../screens/SessionDetailsScreen';
 import LanguagesScreen from '../screens/LanguagesScreen';
 import FeedbacksScreen from '../screens/FeedbacksScreen';
+import HourRateScreen from '../screens/HourRateScreen';
+import BossExportScreen from '../screens/BossExportScreen';
 
 import CheckInModal from '../components/CheckInModal';
 import CheckOutModal from '../components/CheckOutModal';
@@ -61,6 +63,8 @@ type MainStackParamList = {
   Feedbacks: undefined;
   Backup: undefined;
   RestoreBackup: undefined;
+  HourRate: undefined;
+  BossExport: undefined;
 };
 
 const Navigation = () => {
@@ -140,6 +144,8 @@ const Navigation = () => {
           <Stack.Screen name="Feedbacks" component={FeedbacksScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Backup" component={BackupScreen} options={{ headerShown: false }} />
           <Stack.Screen name="RestoreBackup" component={RestoreBackupScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="HourRate" component={HourRateScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="BossExport" component={BossExportScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
 
         {showUpdateModal && updateInfo && (

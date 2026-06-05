@@ -22,6 +22,7 @@ export interface AppData {
     theme: 'light' | 'dark';
     notifications: boolean;
   };
+  hourRate: number;
 }
 
 export interface Profile {
