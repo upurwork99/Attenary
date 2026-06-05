@@ -74,10 +74,11 @@ function runJelly(scaleX: Animated.Value, scaleY: Animated.Value) {
 // ─── Component ───────────────────────────────────────────────────────────────
 const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   // Layout slots measured per tab button
-  const [tabLayouts, setTabLayouts] = useState<Array<{ x: number; width: number; height: number }>>([]);
+  const [tabLayouts, setTabLayouts] = useState<Array<{ x: number; y: number; width: number; height: number }>>([]);
 
   // Animated values for the fluid backing pill
   const pillLeft   = useRef(new Animated.Value(0)).current;
+  const pillTop    = useRef(new Animated.Value(0)).current;
   const pillWidth  = useRef(new Animated.Value(0)).current;
   const pillHeight = useRef(new Animated.Value(TOKEN.size4_12)).current;
 
@@ -121,11 +122,13 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
 
     if (!animate) {
       pillLeft.setValue(layout.x);
+      pillTop.setValue(layout.y);
       pillWidth.setValue(layout.width);
       pillHeight.setValue(layout.height);
     } else {
       Animated.parallel([
         Animated.spring(pillLeft,   { toValue: layout.x,      ...FLUID_SPRING }),
+        Animated.spring(pillTop,    { toValue: layout.y,      ...FLUID_SPRING }),
         Animated.spring(pillWidth,  { toValue: layout.width,  ...FLUID_SPRING }),
         Animated.spring(pillHeight, { toValue: layout.height, ...FLUID_SPRING }),
       ]).start();
@@ -163,10 +166,10 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
 
   // ── Capture individual tab button layout ─────────────────────────────────
   const handleTabLayout = (index: number) => (e: LayoutChangeEvent) => {
-    const { x, width, height } = e.nativeEvent.layout;
+    const { x, y, width, height } = e.nativeEvent.layout;
     setTabLayouts(prev => {
       const next = [...prev];
-      next[index] = { x, width, height };
+      next[index] = { x, y, width, height };
       return next;
     });
   };
@@ -197,20 +200,6 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
         {Platform.OS === 'ios' ? (
           <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
         ) : null}
-
-        {/* Fluid backing pill */}
-        <Animated.View
-          style={[
-            styles.fluidPill,
-            {
-              left:   pillLeft,
-              width:  pillWidth,
-              height: pillHeight,
-              transform: [{ scaleX: pillScaleX }, { scaleY: pillScaleY }],
-            },
-          ]}
-          pointerEvents="none"
-        />
 
         {/* Tab buttons */}
         <View style={styles.tabRow}>
@@ -253,6 +242,22 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
               </TouchableOpacity>
             );
           })}
+
+          {/* Fluid backing pill — lives inside tabRow so its coordinates
+              match the tabButton.onLayout measurements directly */}
+          <Animated.View
+            style={[
+              styles.fluidPill,
+              {
+                left:   pillLeft,
+                top:    pillTop,
+                width:  pillWidth,
+                height: pillHeight,
+                transform: [{ scaleX: pillScaleX }, { scaleY: pillScaleY }],
+              },
+            ]}
+            pointerEvents="none"
+          />
         </View>
       </View>
     </Animated.View>
@@ -275,10 +280,7 @@ const styles = StyleSheet.create({
     borderRadius: TOKEN.size4_8,
     borderWidth: 1,
     borderColor: TOKEN.base30,
-    backgroundColor:
-      Platform.OS === 'android'
-        ? 'rgba(0,0,0,0.82)'
-        : 'rgba(0,0,0,0.45)',
+    backgroundColor: '#000000',
     padding: TOKEN.size4_2,
     overflow: 'hidden',
     shadowColor: '#000',
