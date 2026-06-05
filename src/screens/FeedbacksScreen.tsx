@@ -16,26 +16,25 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { useSupabase } from '../context/SupabaseContext';
 import { useLanguage } from '../context/LanguageContext';
 
-const SendIcon = ({ size = 20 }: { size?: number }) => (
+const SendIcon = ({ size = 18 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke={colors.bgMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" stroke={colors.bgMain} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-const BackIcon = ({ size = 24 }: { size?: number }) => (
+const BackIcon = ({ size = 20 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M19 12H5M12 19l-7-7 7-7" stroke={colors.textPrimary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M15.75 19.5 8.25 12l7.5-7.5" stroke={colors.textPrimary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-const FeedbackIcon = ({ size = 48 }: { size?: number }) => (
+const FeedbackIcon = ({ size = 36 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke={colors.secondary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    <Path d="M8 9h8M8 13h6" stroke={colors.secondary} strokeWidth="1.5" strokeLinecap="round" />
+    <Path d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" stroke={colors.textAccent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
@@ -153,8 +152,9 @@ const FeedbacksScreen = () => {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
         >
-          <BackIcon size={24} />
+          <BackIcon />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('feedbacks.title')}</Text>
         <View style={styles.headerSpacer} />
@@ -172,7 +172,7 @@ const FeedbacksScreen = () => {
           {/* Icon Section */}
           <View style={styles.iconSection}>
             <View style={styles.iconContainer}>
-              <FeedbackIcon size={48} />
+              <FeedbackIcon size={36} />
             </View>
             <Text style={styles.title}>{t('feedbacks.weValueYourFeedback')}</Text>
             <Text style={styles.subtitle}>
@@ -183,24 +183,28 @@ const FeedbacksScreen = () => {
           {/* Feedback Type Selection */}
           <View style={styles.section}>
             <Text style={styles.label}>{t('feedbacks.feedbackType')}</Text>
-            <View style={styles.typeContainer}>
-              {feedbackTypes.map((type) => (
-                <TouchableOpacity
-                  key={type.id}
-                  style={[
-                    styles.typeButton,
-                    feedbackType === type.id && styles.typeButtonActive
-                  ]}
-                  onPress={() => setFeedbackType(type.id as any)}
-                >
-                  <Text style={[
-                    styles.typeButtonText,
-                    feedbackType === type.id && styles.typeButtonTextActive
-                  ]}>
-                    {type.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.typeGrid}>
+              {feedbackTypes.map((type) => {
+                const isActive = feedbackType === type.id;
+                return (
+                  <TouchableOpacity
+                    key={type.id}
+                    style={[
+                      styles.typeButton,
+                      isActive && styles.typeButtonActive,
+                    ]}
+                    onPress={() => setFeedbackType(type.id as any)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[
+                      styles.typeButtonText,
+                      isActive && styles.typeButtonTextActive,
+                    ]}>
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -229,7 +233,7 @@ const FeedbacksScreen = () => {
               value={feedback}
               onChangeText={setFeedback}
               multiline
-              numberOfLines={6}
+              numberOfLines={5}
               textAlignVertical="top"
             />
           </View>
@@ -244,7 +248,7 @@ const FeedbacksScreen = () => {
             {isSubmitting ? (
               <ActivityIndicator color={colors.bgMain} size="small" />
             ) : (
-              <SendIcon size={20} />
+              <SendIcon size={18} />
             )}
             <Text style={styles.submitButtonText}>
               {isSubmitting ? t('feedbacks.submitting') : t('feedbacks.submit')}
@@ -278,16 +282,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.base10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     flex: 1,
-    fontSize: fonts.sizes.xl,
-    fontWeight: fonts.weights.semibold as any,
+    fontSize: fonts.sizes.lg,
+    fontWeight: fonts.weights.bold as any,
     color: colors.textPrimary,
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   headerSpacer: {
     width: 44,
@@ -296,23 +303,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.huge,
   },
   iconSection: {
     alignItems: 'center',
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing.xl,
   },
   iconContainer: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.bgGlassLight,
+    borderRadius: borderRadius.xxl,
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...shadows.accentGlowSubtle,
   },
   title: {
     fontSize: fonts.sizes.xxl,
@@ -320,6 +328,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.sm,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: fonts.sizes.md,
@@ -332,43 +341,45 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   label: {
-    fontSize: fonts.sizes.sm,
-    fontWeight: fonts.weights.medium as any,
-    color: colors.textSecondary,
+    fontSize: fonts.sizes.xs,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
     marginBottom: spacing.sm,
     marginLeft: spacing.xs,
   },
-  typeContainer: {
+  typeGrid: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
   typeButton: {
     flex: 1,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.bgCard,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.xl,
+    backgroundColor: 'rgba(36,36,36,0.7)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(54,54,54,0.6)',
     alignItems: 'center',
   },
   typeButtonActive: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primary,
+    backgroundColor: 'rgba(168,130,255,0.12)',
+    borderColor: colors.textAccent,
   },
   typeButtonText: {
     fontSize: fonts.sizes.sm,
-    fontWeight: fonts.weights.medium as any,
+    fontWeight: fonts.weights.bold as any,
     color: colors.textSecondary,
   },
   typeButtonTextActive: {
-    color: colors.primary,
+    color: colors.textAccent,
   },
   input: {
     backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(54,54,54,0.6)',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: fonts.sizes.md,
@@ -382,20 +393,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.button,
+    backgroundColor: colors.accent,
+    borderRadius: borderRadius.xxl,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xxl,
-    marginTop: spacing.md,
-    ...shadows.button,
+    marginTop: spacing.sm,
+    ...shadows.accentGlow,
   },
   submitButtonDisabled: {
-    backgroundColor: colors.textMuted,
     opacity: 0.7,
   },
   submitButtonText: {
     fontSize: fonts.sizes.md,
-    fontWeight: fonts.weights.semibold as any,
+    fontWeight: fonts.weights.bold as any,
     color: colors.bgMain,
     marginLeft: spacing.sm,
   },
@@ -409,4 +419,3 @@ const styles = StyleSheet.create({
 });
 
 export default FeedbacksScreen;
-

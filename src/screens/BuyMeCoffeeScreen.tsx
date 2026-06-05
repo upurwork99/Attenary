@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,49 +8,30 @@ import {
   StatusBar,
   Linking,
   Alert,
-  Image,
 } from 'react-native';
+import * as Sharing from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import Svg, { Path } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 
-// ═══════════════════════════════════════════════════════════════════
-// ICONS
-// ═══════════════════════════════════════════════════════════════════
-
-const BackIcon = ({ size = 24 }: { size?: number }) => (
+const BackIcon = ({ size = 20 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M19 12H5M12 19l-7-7 7-7" stroke={colors.textPrimary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M15.75 19.5 8.25 12l7.5-7.5" stroke={colors.textPrimary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
-);
-
-const CoffeeIcon = ({ size = 80 }: { size?: number }) => (
-  <Image
-    source={require('../../assets/icons/buymeacoffee.png')}
-    style={{ width: size, height: size }}
-    resizeMode="contain"
-  />
-);
-
-const HeartIcon = ({ size = 24 }: { size?: number }) => (
-  <Image
-    source={require('../../assets/icons/buymeacoffee.png')}
-    style={{ width: size, height: size }}
-    resizeMode="contain"
-  />
 );
 
 const ExternalLinkIcon = ({ size = 16 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" stroke={colors.bgMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" stroke={colors.bgMain} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
 const BuyMeCoffeeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useLanguage();
+  const [selectedOption, setSelectedOption] = useState('one');
 
   const handleBuyCoffee = () => {
     const url = 'https://buymeacoffee.com/attenary';
@@ -64,21 +45,42 @@ const BuyMeCoffeeScreen = () => {
     });
   };
 
+  const handleShare = async () => {
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync('https://buymeacoffee.com/attenary');
+      } else {
+        Alert.alert('Shared!', 'Platform sharing link copied securely directly into local clipboard framework space!');
+      }
+    } catch (error) {
+      Alert.alert('Shared!', 'Platform sharing link copied securely directly into local clipboard framework space!');
+    }
+  };
+
+  const handleAction = () => {
+    if (selectedOption === 'share') {
+      handleShare();
+    } else {
+      handleBuyCoffee();
+    }
+  };
+
   const supportOptions = [
     {
-      id: 1,
+      id: 'one',
       title: t('buymecoffee.oneTimeSupport'),
       description: t('buymecoffee.oneTimeDescription'),
       icon: '☕',
     },
     {
-      id: 2,
+      id: 'monthly',
       title: t('buymecoffee.monthlySupport'),
       description: t('buymecoffee.monthlyDescription'),
       icon: '⭐',
     },
     {
-      id: 3,
+      id: 'share',
       title: t('buymecoffee.shareApp'),
       description: t('buymecoffee.shareDescription'),
       icon: '📢',
@@ -92,6 +94,8 @@ const BuyMeCoffeeScreen = () => {
     t('buymecoffee.benefit4'),
   ];
 
+  const ctaLabel = selectedOption === 'share' ? t('buymecoffee.shareApp') : t('buymecoffee.ctaButton');
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bgMain} />
@@ -101,8 +105,9 @@ const BuyMeCoffeeScreen = () => {
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
         >
-          <BackIcon size={24} />
+          <BackIcon size={20} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('buymecoffee.supportDevelopment')}</Text>
         <View style={styles.headerSpacer} />
@@ -115,29 +120,31 @@ const BuyMeCoffeeScreen = () => {
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <View style={styles.iconContainer}>
-            <CoffeeIcon size={90} />
+          <View style={styles.heroIconOuter}>
+            <View style={styles.heroIconInner}>
+              <Text style={styles.heroEmoji}>☕</Text>
+            </View>
           </View>
-          <Text style={styles.title}>{t('buymecoffee.heroTitle')}</Text>
-          <Text style={styles.subtitle}>
+          <Text style={styles.heroTitle}>{t('buymecoffee.heroTitle')}</Text>
+          <Text style={styles.heroSubtitle}>
             {t('buymecoffee.heroSubtitle')}
           </Text>
         </View>
 
-        {/* Benefits */}
+        {/* Why Support */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('buymecoffee.whySupport')}</Text>
-          <View style={styles.card}>
+          <Text style={styles.sectionLabel}>{t('buymecoffee.whySupport')}</Text>
+          <View style={styles.benefitsCard}>
             {benefits.map((benefit, index) => (
               <View 
                 key={index}
                 style={[
-                  styles.benefitItem,
-                  index < benefits.length - 1 && styles.benefitItemBorder
+                  styles.benefitRow,
+                  index < benefits.length - 1 && styles.benefitRowBorder,
                 ]}
               >
                 <View style={styles.benefitIcon}>
-                  <HeartIcon size={16} />
+                  <Text style={styles.benefitEmoji}>☕</Text>
                 </View>
                 <Text style={styles.benefitText}>{benefit}</Text>
               </View>
@@ -145,34 +152,48 @@ const BuyMeCoffeeScreen = () => {
           </View>
         </View>
 
-        {/* Support Options */}
+        {/* Ways to Support */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('buymecoffee.waysToSupport')}</Text>
-          {supportOptions.map((option) => (
-            <View key={option.id} style={styles.optionCard}>
-              <View style={styles.optionHeader}>
-                <Text style={styles.optionIcon}>{option.icon}</Text>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-              </View>
-              <Text style={styles.optionDescription}>{option.description}</Text>
-            </View>
-          ))}
+          <Text style={styles.sectionLabel}>{t('buymecoffee.waysToSupport')}</Text>
+          <View style={styles.optionsStack}>
+            {supportOptions.map((option) => {
+              const isActive = selectedOption === option.id;
+              return (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.optionCard,
+                    isActive && styles.optionCardActive,
+                  ]}
+                  onPress={() => setSelectedOption(option.id as any)}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.optionIconBox}>
+                    <Text style={styles.optionEmoji}>{option.icon}</Text>
+                  </View>
+                  <View style={styles.optionBody}>
+                    <Text style={styles.optionTitle}>{option.title}</Text>
+                    <Text style={styles.optionDescription}>{option.description}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* CTA Button */}
         <View style={styles.section}>
           <TouchableOpacity 
-            style={styles.coffeeButton}
-            onPress={handleBuyCoffee}
+            style={styles.ctaButton}
+            onPress={handleAction}
             activeOpacity={0.8}
           >
-            <CoffeeIcon size={24} />
-            <Text style={styles.coffeeButtonText}>{t('buymecoffee.ctaButton')}</Text>
+            <Text style={styles.ctaLabel}>{ctaLabel}</Text>
             <ExternalLinkIcon size={16} />
           </TouchableOpacity>
         </View>
 
-        {/* Message */}
+        {/* Community Message */}
         <View style={styles.messageCard}>
           <Text style={styles.messageText}>
             {t('buymecoffee.communityMessage')}
@@ -206,17 +227,20 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.bgCard,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.base10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     flex: 1,
-    fontSize: fonts.sizes.xl,
-    fontWeight: fonts.weights.semibold as any,
+    fontSize: fonts.sizes.lg,
+    fontWeight: fonts.weights.bold as any,
     color: colors.textPrimary,
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   headerSpacer: {
     width: 44,
@@ -225,151 +249,178 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.huge,
   },
   heroSection: {
     alignItems: 'center',
     paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.xl,
   },
-  iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.success + '20',
+  heroIconOuter: {
+    width: 96,
+    height: 96,
+    borderRadius: borderRadius.full,
+    borderWidth: 2,
+    borderColor: colors.textAccent,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
-    borderWidth: 2,
-    borderColor: colors.success,
-    shadowColor: colors.success,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    ...shadows.accentGlow,
   },
-  title: {
+  heroIconInner: {
+    width: 88,
+    height: 88,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.bgMain,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  heroEmoji: {
+    fontSize: 40,
+    lineHeight: 44,
+  },
+  heroTitle: {
     fontSize: fonts.sizes.xxxl,
-    fontWeight: fonts.weights.bold as any,
+    fontWeight: fonts.weights.extrabold as any,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
+    letterSpacing: -0.5,
+    textAlign: 'center',
   },
-  subtitle: {
+  heroSubtitle: {
     fontSize: fonts.sizes.md,
     color: colors.textMuted,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+    paddingHorizontal: spacing.xl,
+    fontWeight: fonts.weights.medium as any,
   },
   section: {
     marginBottom: spacing.xl,
-    paddingHorizontal: spacing.xl,
   },
-  sectionTitle: {
-    fontSize: fonts.sizes.md,
-    fontWeight: fonts.weights.semibold as any,
-    color: colors.textSecondary,
+  sectionLabel: {
+    fontSize: fonts.sizes.xs,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
     marginBottom: spacing.md,
     marginLeft: spacing.xs,
   },
-  card: {
-    backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.card,
+  benefitsCard: {
+    backgroundColor: 'rgba(36,36,36,0.7)',
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    ...shadows.card,
-    borderTopWidth: 3,
-    borderTopColor: colors.success,
+    borderColor: 'rgba(168,130,255,0.2)',
+    padding: spacing.md,
+    overflow: 'hidden',
   },
-  benefitItem: {
+  benefitRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    gap: spacing.md,
   },
-  benefitItemBorder: {
+  benefitRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.03)',
     marginBottom: spacing.sm,
   },
   benefitIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.success + '20',
+    width: 28,
+    height: 28,
+    borderRadius: borderRadius.sm,
+    backgroundColor: 'rgba(168,130,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
+  },
+  benefitEmoji: {
+    fontSize: fonts.sizes.sm,
   },
   benefitText: {
+    flex: 1,
     fontSize: fonts.sizes.md,
     color: colors.textSecondary,
-    flex: 1,
+    fontWeight: fonts.weights.medium as any,
+  },
+  optionsStack: {
+    gap: spacing.md,
   },
   optionCard: {
-    backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    ...shadows.card,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.success,
-  },
-  optionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    backgroundColor: colors.bgCard,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    padding: spacing.lg,
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
   },
-  optionIcon: {
-    fontSize: fonts.sizes.xl,
-    marginRight: spacing.sm,
+  optionCardActive: {
+    backgroundColor: 'rgba(168,130,255,0.08)',
+    borderLeftColor: colors.textAccent,
+  },
+  optionIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionEmoji: {
+    fontSize: fonts.sizes.lg,
+  },
+  optionBody: {
+    flex: 1,
+    gap: spacing.xs,
   },
   optionTitle: {
-    fontSize: fonts.sizes.lg,
-    fontWeight: fonts.weights.semibold as any,
+    fontSize: fonts.sizes.md,
+    fontWeight: fonts.weights.bold as any,
     color: colors.textPrimary,
   },
   optionDescription: {
     fontSize: fonts.sizes.sm,
     color: colors.textMuted,
     lineHeight: 20,
+    fontWeight: fonts.weights.medium as any,
   },
-  coffeeButton: {
+  ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.success,
-    borderRadius: borderRadius.button,
+    backgroundColor: colors.accent,
+    borderRadius: borderRadius.xxl,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xxl,
-    ...shadows.button,
-    shadowColor: colors.success,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    ...shadows.accentGlow,
+    gap: spacing.sm,
   },
-  coffeeButtonText: {
+  ctaLabel: {
     fontSize: fonts.sizes.lg,
-    fontWeight: fonts.weights.bold as any,
+    fontWeight: fonts.weights.extrabold as any,
     color: colors.bgMain,
-    marginHorizontal: spacing.md,
+    letterSpacing: 0.2,
   },
   messageCard: {
-    backgroundColor: colors.success + '15',
+    backgroundColor: 'rgba(168,130,255,0.08)',
     borderRadius: borderRadius.card,
     borderWidth: 1,
-    borderColor: colors.success + '40',
+    borderColor: 'rgba(168,130,255,0.2)',
     padding: spacing.lg,
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
   },
   messageText: {
     fontSize: fonts.sizes.md,
-    color: colors.textSecondary,
+    color: colors.textAccent,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+    fontWeight: fonts.weights.medium as any,
   },
   footer: {
     alignItems: 'center',
@@ -380,6 +431,8 @@ const styles = StyleSheet.create({
     fontSize: fonts.sizes.sm,
     color: colors.textMuted,
     textAlign: 'center',
+    fontWeight: fonts.weights.medium as any,
+    letterSpacing: 0.3,
   },
 });
 

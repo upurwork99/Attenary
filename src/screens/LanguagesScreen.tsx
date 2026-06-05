@@ -9,42 +9,33 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import { useLanguage, Language } from '../context/LanguageContext';
 
-// ═══════════════════════════════════════════════════════════════════
-// ICONS
-// ═══════════════════════════════════════════════════════════════════
-
-const GlobeIcon = ({ size = 24, color = colors.primary }: { size?: number; color?: string }) => (
+const BackIcon = ({ size = 20 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" />
-    <Path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M15.75 19.5 8.25 12l7.5-7.5" stroke={colors.textPrimary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-const CheckIcon = ({ size = 20, color = colors.success }: { size?: number; color?: string }) => (
+const CheckIcon = ({ size = 18, color = colors.textAccent }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M20 6L9 17l-5-5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="m4.5 12.75 6 6 9-13.5" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-const BackIcon = ({ size = 24 }: { size?: number }) => (
+const RefreshIcon = ({ size = 20, color = colors.textAccent }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M19 12H5M12 19l-7-7 7-7" stroke={colors.textPrimary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-.132-8.314-.366m16.628 0c-.552 1.675-2.053 2.924-3.864 3.255m-9.622-3.255A11.952 11.952 0 0 0 12 13.5c1.884 0 3.654-.143 5.314-.416m-10.628 0c.552 1.675 2.053 2.924 3.864 3.255" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
-
-// ═══════════════════════════════════════════════════════════════════
-// LANGUAGE DATA
-// ═══════════════════════════════════════════════════════════════════
 
 interface LanguageOption {
   code: Language;
   name: string;
   subtitle: string;
-  flag: string;
+  label: string;
 }
 
 const languageOptions: LanguageOption[] = [
@@ -52,19 +43,19 @@ const languageOptions: LanguageOption[] = [
     code: 'en',
     name: 'English',
     subtitle: 'Left to right (LTR)',
-    flag: '🇺🇸',
+    label: 'US',
   },
   {
     code: 'ar',
     name: 'العربية',
     subtitle: 'Right to left (RTL)',
-    flag: '🇸🇦',
+    label: 'SA',
   },
 ];
 
 const LanguagesScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { language: currentLanguage, setLanguage, t, isRTL } = useLanguage();
+  const { language: currentLanguage, setLanguage, t } = useLanguage();
 
   const handleLanguageSelect = async (langCode: Language) => {
     await setLanguage(langCode);
@@ -77,80 +68,82 @@ const LanguagesScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bgMain} />
-      
-      {/* Header */}
-      <View style={styles.header}>
+
+      {/* Navigation Header */}
+      <View style={styles.navSection}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={handleGoBack}
           activeOpacity={0.7}
         >
-          <BackIcon size={24} />
+          <BackIcon size={20} />
         </TouchableOpacity>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>{t('languages.title')}</Text>
-          <Text style={styles.headerSubtitle}>{t('languages.subtitle')}</Text>
+
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>{t('languages.title')}</Text>
+          <Text style={styles.subtitle}>{t('languages.subtitle')}</Text>
         </View>
       </View>
 
-      {/* Language Options */}
+      {/* Language Selector */}
       <ScrollView 
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.section}>
-          <View style={styles.cardContainer}>
-            {languageOptions.map((option, index) => {
-              const isSelected = currentLanguage === option.code;
-              return (
-                <TouchableOpacity
-                  key={option.code}
-                  style={[
-                    styles.languageItem,
-                    index === 0 && styles.languageItemFirst,
-                    index === languageOptions.length - 1 && styles.languageItemLast,
-                    isSelected && styles.languageItemSelected,
-                  ]}
-                  onPress={() => handleLanguageSelect(option.code)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.languageItemLeft}>
-                    <View style={[
-                      styles.flagContainer,
-                      isSelected && styles.flagContainerSelected,
-                    ]}>
-                      <Text style={styles.flagEmoji}>{option.flag}</Text>
-                    </View>
-                    <View style={styles.languageItemContent}>
-                      <View style={styles.languageNameRow}>
-                        <Text style={[
-                          styles.languageName,
-                          isSelected && styles.languageNameSelected,
-                        ]}>
-                          {option.name}
-                        </Text>
-                        {isSelected && (
-                          <View style={styles.currentBadge}>
-                            <Text style={styles.currentBadgeText}>{t('languages.current')}</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.languageSubtitle}>{option.subtitle}</Text>
-                    </View>
+        <View style={styles.listCard}>
+          {languageOptions.map((option) => {
+            const isSelected = currentLanguage === option.code;
+            return (
+              <TouchableOpacity
+                key={option.code}
+                style={[
+                  styles.languageRow,
+                  isSelected && styles.languageRowActive,
+                ]}
+                onPress={() => handleLanguageSelect(option.code)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.rowLeft}>
+                  <View style={[
+                    styles.flagBox,
+                    isSelected && styles.flagBoxActive,
+                  ]}>
+                    <Text style={[
+                      styles.flagText,
+                      isSelected && styles.flagTextActive,
+                    ]}>{option.label}</Text>
                   </View>
-                  {isSelected && (
-                    <CheckIcon size={24} color={colors.success} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                  <View style={styles.languageInfo}>
+                    <View style={styles.nameRow}>
+                      <Text style={[
+                        styles.languageName,
+                        isSelected && styles.languageNameActive,
+                      ]}>
+                        {option.name}
+                      </Text>
+                      {isSelected && (
+                        <View style={styles.currentBadge}>
+                          <Text style={styles.currentBadgeText}>{t('languages.current')}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.languageSubtitle}>{option.subtitle}</Text>
+                  </View>
+                </View>
+                {isSelected && (
+                  <CheckIcon size={18} color={colors.textAccent} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* Info Card */}
+        {/* Info Callout */}
         <View style={styles.infoCard}>
-          <GlobeIcon size={24} color={colors.info} />
+          <View style={styles.infoIcon}>
+            <RefreshIcon size={20} color={colors.textAccent} />
+          </View>
           <Text style={styles.infoText}>
             {currentLanguage === 'ar' 
               ? 'سيؤدي تغيير اللغة إلى إعادة تحميل التطبيق لتطبيق التغييرات.'
@@ -167,141 +160,156 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bgMain,
   },
-  header: {
+  navSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxxl + spacing.xl,
-    paddingBottom: spacing.xl,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxxl + spacing.md,
+    paddingBottom: spacing.lg,
     backgroundColor: colors.bgMain,
   },
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.bgCard,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.base10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
-    ...shadows.card,
   },
-  headerTextContainer: {
+  titleBlock: {
     flex: 1,
   },
-  headerTitle: {
-    fontSize: fonts.sizes.hero,
-    fontWeight: fonts.weights.bold as any,
+  title: {
+    fontSize: fonts.sizes.xxxl,
+    fontWeight: fonts.weights.extrabold as any,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    letterSpacing: -0.5,
+    lineHeight: 34,
   },
-  headerSubtitle: {
+  subtitle: {
     fontSize: fonts.sizes.md,
     color: colors.textMuted,
+    fontWeight: fonts.weights.medium as any,
+    marginTop: spacing.xs,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.huge,
   },
-  section: {
-    marginBottom: spacing.xxl,
-  },
-  cardContainer: {
-    backgroundColor: colors.bgCard,
-    borderRadius: borderRadius.card,
+  listCard: {
+    backgroundColor: 'rgba(36,36,36,0.7)',
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
+    borderColor: 'rgba(54,54,54,0.4)',
+    overflow: 'hidden',
+    ...shadows.glass,
   },
-  languageItem: {
+  languageRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#2a2a2a',
   },
-  languageItemFirst: {
-    borderTopLeftRadius: borderRadius.card,
-    borderTopRightRadius: borderRadius.card,
+  languageRowActive: {
+    backgroundColor: colors.base20,
   },
-  languageItemLast: {
-    borderBottomWidth: 0,
-    borderBottomLeftRadius: borderRadius.card,
-    borderBottomRightRadius: borderRadius.card,
-  },
-  languageItemSelected: {
-    backgroundColor: colors.bgGlassLight,
-  },
-  languageItemLeft: {
+  rowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    gap: spacing.md,
   },
-  flagContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.bgMain,
+  flagBox: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.lg,
+    backgroundColor: '#2a2a2a',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(54,54,54,0.5)',
   },
-  flagContainerSelected: {
-    backgroundColor: colors.primary + '20',
+  flagBoxActive: {
+    backgroundColor: 'rgba(168,130,255,0.08)',
+    borderColor: 'rgba(168,130,255,0.25)',
   },
-  flagEmoji: {
-    fontSize: 24,
+  flagText: {
+    fontSize: fonts.sizes.sm,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textMuted,
+    letterSpacing: 0.5,
   },
-  languageItemContent: {
+  flagTextActive: {
+    color: colors.textAccent,
+  },
+  languageInfo: {
     flex: 1,
   },
-  languageNameRow: {
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 2,
+    gap: spacing.sm,
   },
   languageName: {
-    fontSize: fonts.sizes.lg,
-    fontWeight: fonts.weights.medium as any,
+    fontSize: fonts.sizes.md,
+    fontWeight: fonts.weights.bold as any,
     color: colors.textPrimary,
   },
-  languageNameSelected: {
-    color: colors.primary,
+  languageNameActive: {
+    color: colors.textAccent,
+  },
+  currentBadge: {
+    backgroundColor: 'rgba(168,130,255,0.12)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  currentBadgeText: {
+    fontSize: fonts.sizes.xxs,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textAccent,
+    letterSpacing: 0.5,
   },
   languageSubtitle: {
     fontSize: fonts.sizes.sm,
     color: colors.textMuted,
-  },
-  currentBadge: {
-    backgroundColor: colors.success + '20',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-    marginLeft: spacing.sm,
-  },
-  currentBadgeText: {
-    fontSize: fonts.sizes.xs,
     fontWeight: fonts.weights.medium as any,
-    color: colors.success,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.info + '15',
-    padding: spacing.lg,
-    borderRadius: borderRadius.card,
+    backgroundColor: 'rgba(168,130,255,0.05)',
     borderWidth: 1,
-    borderColor: colors.info + '30',
+    borderColor: 'rgba(168,130,255,0.25)',
+    borderRadius: borderRadius.card,
+    padding: spacing.lg,
+    marginTop: spacing.xl,
+    gap: spacing.md,
+  },
+  infoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(168,130,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   infoText: {
     flex: 1,
     fontSize: fonts.sizes.sm,
-    color: colors.info,
-    marginLeft: spacing.md,
+    color: colors.textAccent,
+    fontWeight: fonts.weights.medium as any,
     lineHeight: 20,
   },
 });

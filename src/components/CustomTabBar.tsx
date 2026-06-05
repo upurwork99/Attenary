@@ -74,7 +74,7 @@ function runJelly(scaleX: Animated.Value, scaleY: Animated.Value) {
 // ─── Component ───────────────────────────────────────────────────────────────
 const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   // Layout slots measured per tab button
-  const [tabLayouts, setTabLayouts] = useState<Array<{ x: number; y: number; width: number; height: number }>>([]);
+  const [tabLayouts, setTabLayouts] = useState<{ x: number; y: number; width: number; height: number }[]>([]);
 
   // Animated values for the fluid backing pill
   const pillLeft   = useRef(new Animated.Value(0)).current;

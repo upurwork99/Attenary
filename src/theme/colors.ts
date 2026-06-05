@@ -196,6 +196,7 @@ export const shadows = {
 export const fonts = {
   sizes: {
     xs: 11,
+    xxs: 10,
     sm: 13,
     md: 15,
     lg: 17,

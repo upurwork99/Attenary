@@ -2,51 +2,73 @@ import * as React from 'react';
 import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import Svg, { Path } from 'react-native-svg';
+import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { BackupSchema, RestorePreview } from '../types/backup';
 
-const ChevronRightIcon = ({ size = 20 }: { size?: number }) => (
+const BackIcon = ({ size = 20 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M9 18l6-6-6-6" stroke={colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M15.75 19.5 8.25 12l7.5-7.5" stroke={colors.textPrimary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-const UploadIcon = ({ size = 60 }: { size?: number }) => (
+const CrosshairIcon = ({ size = 28 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke={colors.secondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-.132-8.314-.366m16.628 0c-.552 1.675-2.053 2.924-3.864 3.255m-9.622-3.255A11.952 11.952 0 0 0 12 13.5c1.884 0 3.654-.143 5.314-.416m-10.628 0c.552 1.675 2.053 2.924 3.864 3.255" stroke={colors.textAccent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const CheckIcon = ({ size = 16 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke={colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const PlusIcon = ({ size = 18 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 4.5v15m0 0l6.75-6.75M12 19.5l-6.75-6.75" stroke={colors.bgMain} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const UploadIcon = ({ size = 18 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 4.5v15m0 0l6.75-6.75M12 19.5l-6.75-6.75" stroke={colors.bgMain} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
 const RestoreBackupScreen = () => {
+  const navigation = useNavigation<any>();
   const { t } = useLanguage();
   const { importBackupFromFile, previewImport, restoreBackup, loading } = useApp();
-  const navigation = useNavigation();
   const [isImporting, setIsImporting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [preview, setPreview] = useState<RestorePreview | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<BackupSchema | null>(null);
+  const [selectedFilename, setSelectedFilename] = useState<string | null>(null);
+  const [selectedFilesize, setSelectedFilesize] = useState<number | null>(null);
 
   const handleSelectFile = async () => {
     if (loading || isImporting) return;
-    
+
     setIsImporting(true);
     setValidationError(null);
-    
+
     try {
       const backup = await importBackupFromFile();
       if (!backup) {
         setValidationError('backup.noFileSelected');
         return;
       }
-      
+
       setSelectedBackup(backup);
+      setSelectedFilename((backup as any).fileName || 'backup-file.json');
+      setSelectedFilesize((backup as any).size || 0);
+
       const previewResult = await previewImport(backup);
-      
       if (!previewResult.valid) {
         setValidationError(previewResult.error || 'backup.invalidBackup');
         setSelectedBackup(null);
@@ -64,29 +86,25 @@ const RestoreBackupScreen = () => {
 
   const handleRestore = useCallback(async (mode: 'merge' | 'replace' | 'skip', dryRun = false) => {
     if (!selectedBackup) return;
-    
+
     setIsImporting(true);
     try {
       const result = await restoreBackup(selectedBackup, mode, dryRun);
-      
+
       if (!result.valid) {
         Alert.alert(t('common.error'), result.error || t('backup.restoreFailed'));
         return;
       }
-      
-      if (result.totalDuplicate > 0 && result.totalNewRecords === 0) {
-        Alert.alert(t('common.success'), t('backup.allItemsExist'));
-      } else {
-        const message = dryRun
-          ? t('backup.dryRunComplete', { count: result.totalNewRecords })
-          : t('backup.restoreSuccess', { count: result.totalNewRecords });
-        Alert.alert(t('common.success'), message);
-      }
-      
+
+      const message = dryRun
+        ? t('backup.dryRunComplete', { count: result.totalNewRecords })
+        : t('backup.restoreSuccess', { count: result.totalNewRecords });
+
+      Alert.alert(t('common.success'), message);
       setShowPreviewModal(false);
       setSelectedBackup(null);
       setPreview(null);
-      navigation.goBack?.();
+      navigation.goBack();
     } catch (error) {
       console.error('Restore error:', error);
       Alert.alert(t('common.error'), t('backup.restoreError'));
@@ -95,13 +113,8 @@ const RestoreBackupScreen = () => {
     }
   }, [selectedBackup, restoreBackup, navigation, t]);
 
-  const handleDryRun = () => {
-    handleRestore('merge', true);
-  };
-
   const handleConfirmRestore = () => {
     if (!preview) return;
-    
     if (preview.totalConflicting > 0) {
       setShowReplaceConfirm(true);
     } else {
@@ -109,30 +122,19 @@ const RestoreBackupScreen = () => {
     }
   };
 
+  const fileSizeText = selectedFilesize ? `${(selectedFilesize / 1024).toFixed(2)} KB` : '0.00 KB';
+
   const ConfirmModal = () => (
-    <Modal
-      transparent
-      animationType="fade"
-      visible={showReplaceConfirm}
-      onRequestClose={() => setShowReplaceConfirm(false)}
-    >
+    <Modal transparent animationType="fade" visible={showReplaceConfirm} onRequestClose={() => setShowReplaceConfirm(false)}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>{t('backup.conflictWarning')}</Text>
           <Text style={styles.modalMessage}>{t('backup.conflictMessage', { count: preview?.totalConflicting || 0 })}</Text>
-          
           <View style={styles.modalButtonContainer}>
-            <TouchableOpacity
-              style={[styles.modalButton, styles.modalButtonSecondary]}
-              onPress={() => setShowReplaceConfirm(false)}
-            >
+            <TouchableOpacity style={[styles.modalButton, styles.modalButtonSecondary]} onPress={() => setShowReplaceConfirm(false)}>
               <Text style={styles.modalButtonTextSecondary}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.modalButton, styles.modalButtonPrimary]}
-              onPress={() => handleRestore('replace', false)}
-            >
+            <TouchableOpacity style={[styles.modalButton, styles.modalButtonPrimary]} onPress={() => handleRestore('replace', false)}>
               <Text style={styles.modalButtonTextPrimary}>{t('backup.replaceExisting')}</Text>
             </TouchableOpacity>
           </View>
@@ -142,31 +144,15 @@ const RestoreBackupScreen = () => {
   );
 
   const PreviewModal = () => (
-    <Modal
-      transparent
-      animationType="slide"
-      visible={showPreviewModal}
-      onRequestClose={() => setShowPreviewModal(false)}
-    >
+    <Modal transparent animationType="slide" visible={showPreviewModal} onRequestClose={() => setShowPreviewModal(false)}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>{t('restoreBackup.previewTitle')}</Text>
-          
           {preview && (
             <View style={styles.previewContent}>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>{t('backup.newRecords')}</Text>
-                <Text style={[styles.previewValue, styles.previewValueNew]}>{preview.totalNewRecords}</Text>
-              </View>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>{t('backup.duplicateRecords')}</Text>
-                <Text style={[styles.previewValue, styles.previewValueDuplicate]}>{preview.totalDuplicate}</Text>
-              </View>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>{t('backup.conflictingRecords')}</Text>
-                <Text style={[styles.previewValue, preview.totalConflicting > 0 && styles.previewValueConflict]}>{preview.totalConflicting}</Text>
-              </View>
-              
+              <View style={styles.previewRow}><Text style={styles.previewLabel}>{t('backup.newRecords')}</Text><Text style={[styles.previewValue, styles.previewValueNew]}>{preview.totalNewRecords}</Text></View>
+              <View style={styles.previewRow}><Text style={styles.previewLabel}>{t('backup.duplicateRecords')}</Text><Text style={[styles.previewValue, styles.previewValueDuplicate]}>{preview.totalDuplicate}</Text></View>
+              <View style={styles.previewRow}><Text style={styles.previewLabel}>{t('backup.conflictingRecords')}</Text><Text style={[styles.previewValue, preview.totalConflicting > 0 && styles.previewValueConflict]}>{preview.totalConflicting}</Text></View>
               <Text style={styles.previewSubtitle}>{t('backup.dataTypes')}</Text>
               <View style={styles.dataTypesContainer}>
                 {preview.recordCounts.employeeName && <Text style={styles.dataTypeChip}>{t('profile.employeeName')}</Text>}
@@ -178,28 +164,14 @@ const RestoreBackupScreen = () => {
               </View>
             </View>
           )}
-          
           <View style={styles.modalButtonContainer}>
-            <TouchableOpacity
-              style={[styles.modalButton, styles.modalButtonSecondary]}
-              onPress={() => setShowPreviewModal(false)}
-            >
+            <TouchableOpacity style={[styles.modalButton, styles.modalButtonSecondary]} onPress={() => setShowPreviewModal(false)}>
               <Text style={styles.modalButtonTextSecondary}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.modalButton, styles.modalButtonSecondary]}
-              onPress={handleDryRun}
-              disabled={isImporting}
-            >
+            <TouchableOpacity style={[styles.modalButton, styles.modalButtonSecondary]} onPress={() => handleRestore('merge', true)} disabled={isImporting}>
               <Text style={styles.modalButtonTextSecondary}>{t('backup.dryRun')}</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.modalButton, styles.modalButtonPrimary]}
-              onPress={handleConfirmRestore}
-              disabled={isImporting}
-            >
+            <TouchableOpacity style={[styles.modalButton, styles.modalButtonPrimary]} onPress={handleConfirmRestore} disabled={isImporting}>
               <Text style={styles.modalButtonTextPrimary}>{t('common.confirm')}</Text>
             </TouchableOpacity>
           </View>
@@ -208,54 +180,98 @@ const RestoreBackupScreen = () => {
     </Modal>
   );
 
+  const isFileSelected = !!selectedBackup;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bgMain} />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <BackIcon />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerLabel}>Recovery Console</Text>
+        </View>
+        <View style={styles.headerPlaceholder} />
+      </View>
+
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Hero Section */}
         <View style={styles.heroSection}>
-          <View style={styles.iconContainer}>
-            <UploadIcon size={60} />
+          <View style={styles.heroOuterRing}>
+            <View style={styles.heroIconContainer}>
+              <CrosshairIcon size={28} />
+            </View>
           </View>
           <Text style={styles.heroTitle}>{t('restoreBackup.title')}</Text>
           <Text style={styles.heroSubtitle}>{t('restoreBackup.subtitle')}</Text>
         </View>
 
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.importButton, (loading || isImporting) && styles.importButtonDisabled]}
-            onPress={handleSelectFile}
-            activeOpacity={0.8}
-            disabled={loading || isImporting}
-          >
-            <View style={styles.importButtonContent}>
-              {isImporting ? (
-                <ActivityIndicator color={colors.bgMain} size="small" />
-              ) : (
-                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                  <Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke={colors.bgMain} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Metrics Grid */}
+        <View style={styles.metricsGrid}>
+          <View style={[styles.metricCard, isFileSelected && styles.metricCardActive]}>
+            <Text style={styles.metricLabel}>{t('restoreBackup.fileStatus')}</Text>
+            <Text style={[styles.metricValue, isFileSelected && styles.metricValueAccent]}>
+              {isFileSelected ? t('restoreBackup.readyToImport') : t('restoreBackup.noFile')}
+            </Text>
+          </View>
+          <View style={styles.metricCard}>
+            <Text style={styles.metricLabel}>{t('restoreBackup.targetArchive')}</Text>
+            <Text style={[styles.metricValue, isFileSelected && styles.metricValueBright]}>{fileSizeText}</Text>
+          </View>
+        </View>
+
+        {/* Details Card */}
+        <View style={[styles.detailsCard, isFileSelected && styles.detailsCardActive]}>
+          <View style={styles.detailRow}>
+            <View style={styles.detailLeft}>
+              <View style={[styles.detailIconCircle, isFileSelected && styles.detailIconCircleActive]}>
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <Path d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44z" stroke={isFileSelected ? colors.textAccent : colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
-              )}
-              <Text style={styles.importButtonText}>
-                {isImporting ? t('restoreBackup.importing') : t('restoreBackup.selectFile')}
+              </View>
+              <View style={styles.detailTexts}>
+                <Text style={[styles.detailTitle, isFileSelected && styles.detailTitleAccent]}>
+                  {selectedFilename || t('restoreBackup.noFile')}
+                </Text>
+                <Text style={styles.detailSubtitle}>
+                  {isFileSelected ? t('restoreBackup.fileSelectedSubtitle') : t('restoreBackup.selectBackupFile')}
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.statusBadge, isFileSelected ? styles.statusBadgeActive : styles.statusBadgeInactive]}>
+              <Text style={[styles.statusBadgeText, isFileSelected && styles.statusBadgeTextActive]}>
+                {isFileSelected ? t('restoreBackup.staged') : t('common.idle')}
               </Text>
             </View>
-          </TouchableOpacity>
-        </View>
-
-        {validationError && (
-          <View style={styles.errorSection}>
-            <View style={styles.errorCard}>
-              <Text style={styles.errorTitle}>{t('common.error')}</Text>
-              <Text style={styles.errorMessage}>{t(validationError)}</Text>
-            </View>
           </View>
-        )}
-
-        <View style={styles.infoSection}>
-          <Text style={styles.infoText}>{t('restoreBackup.infoText')}</Text>
         </View>
+
+        {/* Action Button */}
+        <TouchableOpacity 
+          style={styles.actionButton} 
+          onPress={handleSelectFile} 
+          activeOpacity={0.85} 
+          disabled={loading || isImporting}
+        >
+          {isImporting ? (
+            <ActivityIndicator color={colors.bgMain} />
+          ) : (
+            <>
+              {isFileSelected ? <UploadIcon size={18} /> : <PlusIcon size={18} />}
+              <Text style={styles.actionButtonText}>
+                {isFileSelected ? t('restoreBackup.decompressRestoreState') : t('restoreBackup.browseExportFile')}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        {/* Warning Text */}
+        <Text style={styles.warningText}>{t('restoreBackup.warningText')}</Text>
       </ScrollView>
-      
+
       <ConfirmModal />
       <PreviewModal />
     </View>
@@ -264,43 +280,233 @@ const RestoreBackupScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgMain },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxxl,
+    paddingBottom: spacing.sm,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.base10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerLabel: {
+    fontSize: fonts.sizes.xs,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.15,
+  },
+  headerPlaceholder: { width: 40 },
   content: { flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.xl, paddingBottom: spacing.huge },
-  heroSection: { alignItems: 'center', paddingVertical: spacing.xxl },
-  iconContainer: { marginBottom: spacing.lg },
-  heroTitle: { fontSize: fonts.sizes.xl, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm },
-  heroSubtitle: { fontSize: fonts.sizes.md, color: colors.textMuted, textAlign: 'center' },
-  section: { marginBottom: spacing.xxl },
-  importButton: { backgroundColor: colors.secondary, borderRadius: borderRadius.card, padding: spacing.lg, alignItems: 'center', justifyContent: 'center', minHeight: 80 },
-  importButtonDisabled: { opacity: 0.6 },
-  importButtonContent: { alignItems: 'center' },
-  importButtonText: { fontSize: fonts.sizes.lg, fontWeight: '600', color: colors.bgMain, marginTop: spacing.sm },
-  errorSection: { marginBottom: spacing.xxl },
-  errorCard: { backgroundColor: colors.danger + '20', borderRadius: borderRadius.card, borderWidth: 1, borderColor: colors.danger, padding: spacing.lg, alignItems: 'center' },
-  errorTitle: { fontSize: fonts.sizes.md, fontWeight: '600', color: colors.danger, marginBottom: spacing.xs },
-  errorMessage: { fontSize: fonts.sizes.sm, color: colors.textSecondary, textAlign: 'center' },
-  infoSection: { paddingHorizontal: spacing.lg, alignItems: 'center' },
-  infoText: { fontSize: fonts.sizes.sm, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
-  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  modalContainer: { backgroundColor: colors.bgCard, borderRadius: borderRadius.card, padding: spacing.xl, width: '100%', maxWidth: 340 },
-  modalTitle: { fontSize: fonts.sizes.lg, fontWeight: '600', color: colors.textPrimary, marginBottom: spacing.lg, textAlign: 'center' },
+  scrollContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.huge },
+  heroSection: { alignItems: 'center', marginBottom: spacing.xl },
+  heroOuterRing: {
+    width: 96,
+    height: 96,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  heroIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: 'rgba(168,130,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.accentGlow,
+  },
+  heroTitle: {
+    fontSize: fonts.sizes.xxl,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    letterSpacing: -0.3,
+    textAlign: 'center',
+  },
+  heroSubtitle: {
+    fontSize: fonts.sizes.md,
+    color: colors.textMuted,
+    textAlign: 'center',
+    maxWidth: 320,
+    lineHeight: 22,
+    fontWeight: fonts.weights.medium as any as any,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: 'rgba(36,36,36,0.7)',
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(54,54,54,0.4)',
+  },
+  metricCardActive: {
+    backgroundColor: 'rgba(168,130,255,0.08)',
+    borderColor: 'rgba(168,130,255,0.2)',
+  },
+  metricLabel: {
+    fontSize: fonts.sizes.xxs,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: spacing.sm,
+  },
+  metricValue: {
+    fontSize: fonts.sizes.lg,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+  },
+  metricValueAccent: {
+    color: colors.textAccent,
+  },
+  metricValueBright: {
+    color: colors.textPrimary,
+    fontWeight: fonts.weights.bold as any,
+  },
+  detailsCard: {
+    backgroundColor: 'rgba(36,36,36,0.7)',
+    borderRadius: 28,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(54,54,54,0.4)',
+    marginBottom: spacing.lg,
+  },
+  detailsCardActive: {
+    backgroundColor: 'rgba(168,130,255,0.08)',
+    borderColor: 'rgba(168,130,255,0.2)',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  detailLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing.md,
+  },
+  detailIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailIconCircleActive: {
+    backgroundColor: 'rgba(168,130,255,0.1)',
+  },
+  detailTexts: {
+    flex: 1,
+  },
+  detailTitle: {
+    fontSize: fonts.sizes.md,
+    fontWeight: fonts.weights.semibold as any as any,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  detailTitleAccent: {
+    color: colors.textAccent,
+    fontWeight: fonts.weights.bold as any,
+  },
+  detailSubtitle: {
+    fontSize: fonts.sizes.sm,
+    color: colors.textMuted,
+    fontWeight: fonts.weights.medium as any,
+  },
+  statusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  statusBadgeActive: {
+    backgroundColor: 'rgba(168,130,255,0.12)',
+  },
+  statusBadgeInactive: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  statusBadgeText: {
+    fontSize: fonts.sizes.xxs,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statusBadgeTextActive: {
+    color: colors.textAccent,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    borderRadius: borderRadius.xxl,
+    paddingVertical: spacing.lg,
+    ...shadows.accentGlow,
+    gap: spacing.sm,
+  },
+  actionButtonText: {
+    color: colors.bgMain,
+    fontSize: fonts.sizes.lg,
+    fontWeight: fonts.weights.extrabold as any,
+    letterSpacing: 0.2,
+  },
+  warningText: {
+    textAlign: 'center',
+    color: colors.danger,
+    fontSize: fonts.sizes.sm,
+    lineHeight: 20,
+    marginTop: spacing.xxl,
+    fontWeight: fonts.weights.medium as any,
+    opacity: 0.8,
+  },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
+  modalContainer: { width: '100%', maxWidth: 360, backgroundColor: colors.bgCard, borderRadius: borderRadius.card, padding: spacing.lg },
+  modalTitle: { fontSize: fonts.sizes.lg, fontWeight: fonts.weights.bold as any, color: colors.textPrimary, marginBottom: spacing.md, textAlign: 'center' },
+  modalMessage: { fontSize: fonts.sizes.sm, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg, lineHeight: 20 },
   previewContent: { marginBottom: spacing.lg },
   previewRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
-  previewLabel: { fontSize: fonts.sizes.md, color: colors.textSecondary },
-  previewValue: { fontSize: fonts.sizes.md, fontWeight: '600', color: colors.textPrimary },
+  previewLabel: { fontSize: fonts.sizes.sm, color: colors.textMuted },
+  previewValue: { fontSize: fonts.sizes.sm, fontWeight: fonts.weights.bold as any, color: colors.textPrimary },
   previewValueNew: { color: colors.success },
   previewValueDuplicate: { color: colors.textMuted },
-  previewValueConflict: { color: colors.warning },
-  previewSubtitle: { fontSize: fonts.sizes.sm, color: colors.textMuted, marginTop: spacing.md, marginBottom: spacing.sm },
+  previewValueConflict: { color: colors.danger },
+  previewSubtitle: { fontSize: fonts.sizes.sm, color: colors.textMuted, marginTop: spacing.md, marginBottom: spacing.sm, fontWeight: fonts.weights.medium as any },
   dataTypesContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  dataTypeChip: { backgroundColor: colors.bgGlassLight, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.sm, fontSize: fonts.sizes.xs, color: colors.textMuted },
-  modalButtonContainer: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
-  modalButton: { flex: 1, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: borderRadius.md, alignItems: 'center' },
-  modalButtonPrimary: { backgroundColor: colors.primary },
+  dataTypeChip: { backgroundColor: colors.bgGlassLight, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.sm, fontSize: fonts.sizes.xs, color: colors.textMuted, marginRight: spacing.xs, marginBottom: spacing.xs },
+  modalButtonContainer: { flexDirection: 'row', gap: spacing.sm },
+  modalButton: { flex: 1, paddingVertical: spacing.sm, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
+  modalButtonPrimary: { backgroundColor: colors.accent },
   modalButtonSecondary: { backgroundColor: colors.bgGlassLight },
-  modalButtonTextPrimary: { fontSize: fonts.sizes.sm, fontWeight: '600', color: colors.bgMain },
-  modalButtonTextSecondary: { fontSize: fonts.sizes.sm, fontWeight: '500', color: colors.textPrimary },
-  modalMessage: { fontSize: fonts.sizes.sm, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg },
+  modalButtonTextPrimary: { color: colors.bgMain, fontSize: fonts.sizes.sm, fontWeight: fonts.weights.bold as any },
+  modalButtonTextSecondary: { color: colors.textPrimary, fontSize: fonts.sizes.sm, fontWeight: fonts.weights.semibold as any },
 });
 
 export default RestoreBackupScreen;

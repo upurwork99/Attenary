@@ -42,20 +42,6 @@ const RestoreIcon = ({ size = 20 }: { size?: number }) => (
   </Svg>
 );
 
-// About Icon (Info)
-const AboutIcon = ({ size = 20 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" stroke={colors.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-// Privacy Icon (Lock)
-const PrivacyIcon = ({ size = 20 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25z" stroke={colors.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
 // Coffee Icon
 const CoffeeIcon = ({ size = 20 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -97,20 +83,6 @@ const MoreScreen = () => {
       screen: 'RestoreBackup',
     },
     {
-      id: 'about',
-      title: t('more.about'),
-      subtitle: t('more.aboutSubtitle'),
-      icon: <AboutIcon size={20} />,
-      screen: 'About',
-    },
-    {
-      id: 'privacy',
-      title: t('more.privacy'),
-      subtitle: t('more.privacySubtitle'),
-      icon: <PrivacyIcon size={20} />,
-      screen: 'Privacy',
-    },
-    {
       id: 'coffee',
       title: t('more.coffee'),
       subtitle: t('more.coffeeSubtitle'),
@@ -120,11 +92,6 @@ const MoreScreen = () => {
   ];
 
   const handlePress = (item: any) => {
-    if (item.screen === 'Privacy') {
-      // Handle privacy policy navigation
-      console.log('Navigate to Privacy Policy');
-      return;
-    }
     if (item.screen) {
       navigation.navigate(item.screen as never);
     }
@@ -191,7 +158,7 @@ const styles = StyleSheet.create({
   },
   headerLabel: {
     fontSize: fonts.sizes.xs,
-    fontWeight: '700',
+    fontWeight: fonts.weights.bold as any,
     color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
@@ -234,14 +201,14 @@ const styles = StyleSheet.create({
   },
   navItemTitle: {
     fontSize: fonts.sizes.md,
-    fontWeight: '600',
+    fontWeight: fonts.weights.semibold as any,
     color: colors.textPrimary,
     marginBottom: 2,
   },
   navItemSubtitle: {
     fontSize: fonts.sizes.sm,
     color: colors.textMuted,
-    fontWeight: '400',
+    fontWeight: fonts.weights.normal as any,
   },
   chevronContainer: {
     marginLeft: spacing.sm,
@@ -256,13 +223,13 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: fonts.sizes.md,
-    fontWeight: '600',
+    fontWeight: fonts.weights.semibold as any,
     color: colors.textPrimary,
   },
   footerSubtext: {
     fontSize: fonts.sizes.xs,
     color: colors.textMuted,
-    fontWeight: '500',
+    fontWeight: fonts.weights.medium as any,
   },
 });
 

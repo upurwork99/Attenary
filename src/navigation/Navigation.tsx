@@ -16,7 +16,6 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import MoreScreen from '../screens/MoreScreen';
 import BackupScreen from '../screens/BackupScreen';
 import RestoreBackupScreen from '../screens/RestoreBackupScreen';
-import AboutScreen from '../screens/AboutScreen';
 import BuyMeCoffeeScreen from '../screens/BuyMeCoffeeScreen';
 import SessionDetailsScreen from '../screens/SessionDetailsScreen';
 import LanguagesScreen from '../screens/LanguagesScreen';
@@ -56,7 +55,6 @@ type MainStackParamList = {
   Main: undefined;
   CheckInModal: undefined;
   CheckOutModal: undefined;
-  About: undefined;
   BuyMeCoffee: undefined;
   SessionDetails: { sessionId: string };
   Languages: undefined;
@@ -136,7 +134,6 @@ const Navigation = () => {
               headerTintColor: '#f1f5f9',
             }}
           />
-          <Stack.Screen name="About" component={AboutScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BuyMeCoffee" component={BuyMeCoffeeScreen} options={{ headerShown: false }} />
           <Stack.Screen name="SessionDetails" component={SessionDetailsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Languages" component={LanguagesScreen} options={{ headerShown: false }} />
