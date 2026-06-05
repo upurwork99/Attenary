@@ -8,6 +8,7 @@ import {
   StatusBar,
   Linking,
   Alert,
+  Image,
 } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +21,10 @@ const BackIcon = ({ size = 20 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M15.75 19.5 8.25 12l7.5-7.5" stroke={colors.textPrimary} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
+);
+
+const CoffeeEmoji = ({ size = 48 }: { size?: number }) => (
+  <Image source={require('../../assets/icons/buymeacoffee.png')} style={{ width: size, height: size }} resizeMode="contain" />
 );
 
 const BuyMeCoffeeScreen = () => {
@@ -116,7 +121,7 @@ const BuyMeCoffeeScreen = () => {
         <View style={styles.heroSection}>
           <View style={styles.heroIconOuter}>
             <View style={styles.heroIconInner}>
-              <Text style={styles.heroEmoji}>☕</Text>
+              <CoffeeEmoji size={40} />
             </View>
           </View>
           <Text style={styles.heroTitle}>{t('buymecoffee.heroTitle')}</Text>
@@ -138,7 +143,7 @@ const BuyMeCoffeeScreen = () => {
                 ]}
               >
                 <View style={styles.benefitIcon}>
-                  <Text style={styles.benefitEmoji}>☕</Text>
+                  <CoffeeEmoji size={18} />
                 </View>
                 <Text style={styles.benefitText}>{benefit}</Text>
               </View>
@@ -258,21 +263,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxl,
   },
   heroIconOuter: {
-    width: 96,
-    height: 96,
+    width: 120,
+    height: 120,
     borderRadius: borderRadius.full,
-    borderWidth: 2,
-    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
-    ...shadows.card,
   },
   heroIconInner: {
-    width: 88,
-    height: 88,
+    width: 112,
+    height: 112,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.bgMain,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',

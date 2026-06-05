@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator, Modal, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
@@ -14,10 +14,12 @@ const BackIcon = ({ size = 20 }: { size?: number }) => (
   </Svg>
 );
 
-const CrosshairIcon = ({ size = 28 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-.132-8.314-.366m16.628 0c-.552 1.675-2.053 2.924-3.864 3.255m-9.622-3.255A11.952 11.952 0 0 0 12 13.5c1.884 0 3.654-.143 5.314-.416m-10.628 0c.552 1.675 2.053 2.924 3.864 3.255" stroke={colors.textAccent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
+const RestoreIcon = ({ size = 36 }: { size?: number }) => (
+  <Image source={require('../../assets/icons/import.png')} style={{ width: size, height: size }} resizeMode="contain" />
+);
+
+const WarningIcon = ({ size = 28 }: { size?: number }) => (
+  <Image source={require('../../assets/icons/import.png')} style={{ width: size, height: size }} resizeMode="contain" />
 );
 
 const CheckIcon = ({ size = 16 }: { size?: number }) => (
@@ -201,9 +203,9 @@ const RestoreBackupScreen = () => {
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.heroOuterRing}>
-            <View style={styles.heroIconContainer}>
-              <CrosshairIcon size={28} />
-            </View>
+          <View style={styles.heroIconContainer}>
+            <RestoreIcon size={44} />
+          </View>
           </View>
           <Text style={styles.heroTitle}>{t('restoreBackup.title')}</Text>
           <Text style={styles.heroSubtitle}>{t('restoreBackup.subtitle')}</Text>
@@ -268,8 +270,13 @@ const RestoreBackupScreen = () => {
           )}
         </TouchableOpacity>
 
-        {/* Warning Text */}
-        <Text style={styles.warningText}>{t('restoreBackup.warningText')}</Text>
+        {/* Warning Banner */}
+        <View style={styles.warningBanner}>
+          <View style={styles.warningIcon}>
+            <WarningIcon size={20} />
+          </View>
+          <Text style={styles.warningText}>{t('restoreBackup.warningText')}</Text>
+        </View>
       </ScrollView>
 
       <ConfirmModal />
@@ -313,25 +320,19 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.huge },
   heroSection: { alignItems: 'center', marginBottom: spacing.xl },
   heroOuterRing: {
-    width: 96,
-    height: 96,
+    width: 160,
+    height: 160,
     borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
   heroIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.xl,
-    backgroundColor: colors.bgCard,
-    borderWidth: 1,
-    borderColor: 'rgba(168,130,255,0.3)',
+    width: 140,
+    height: 140,
+    borderRadius: borderRadius.xxl,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.accentGlow,
   },
   heroTitle: {
     fontSize: fonts.sizes.xxl,
@@ -478,14 +479,30 @@ const styles = StyleSheet.create({
     fontWeight: fonts.weights.extrabold as any,
     letterSpacing: 0.2,
   },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bgCard,
+    borderRadius: borderRadius.card,
+    padding: spacing.lg,
+    marginTop: spacing.xxl,
+    gap: spacing.md,
+  },
+  warningIcon: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   warningText: {
+    flex: 1,
     textAlign: 'center',
-    color: colors.danger,
+    color: colors.textWarning,
     fontSize: fonts.sizes.sm,
     lineHeight: 20,
-    marginTop: spacing.xxl,
-    fontWeight: fonts.weights.medium as any,
-    opacity: 0.8,
+    marginTop: 0,
+    fontWeight: fonts.weights.semibold as any,
+    opacity: 1,
   },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   modalContainer: { width: '100%', maxWidth: 360, backgroundColor: colors.bgCard, borderRadius: borderRadius.card, padding: spacing.lg },

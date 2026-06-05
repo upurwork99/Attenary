@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
@@ -13,10 +13,8 @@ const BackIcon = ({ size = 20 }: { size?: number }) => (
   </Svg>
 );
 
-const ShieldIcon = ({ size = 28 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Z" stroke={colors.textAccent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
+const BackupIcon = ({ size = 36 }: { size?: number }) => (
+  <Image source={require('../../assets/icons/export.png')} style={{ width: size, height: size }} resizeMode="contain" />
 );
 
 const ClockIcon = ({ size = 16 }: { size?: number }) => (
@@ -111,9 +109,9 @@ const BackupScreen = () => {
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.heroOuterRing}>
-            <View style={styles.heroIconContainer}>
-              <ShieldIcon size={28} />
-            </View>
+          <View style={styles.heroIconContainer}>
+            <BackupIcon size={44} />
+          </View>
           </View>
           <Text style={styles.heroTitle}>{t('backup.title')}</Text>
           <Text style={styles.heroSubtitle}>{t('backup.subtitle')}</Text>
@@ -228,25 +226,19 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.huge },
   heroSection: { alignItems: 'center', marginBottom: spacing.xl },
   heroOuterRing: {
-    width: 96,
-    height: 96,
+    width: 160,
+    height: 160,
     borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
   heroIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.xl,
-    backgroundColor: 'linear-gradient(180deg, rgba(30,30,30,0.9) 0%, rgba(22,22,22,0.9) 100%)',
-    borderWidth: 1,
-    borderColor: 'rgba(168,130,255,0.3)',
+    width: 140,
+    height: 140,
+    borderRadius: borderRadius.xxl,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.accentGlow,
   },
   heroTitle: {
     fontSize: fonts.sizes.xxl,

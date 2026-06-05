@@ -26,6 +26,10 @@ const CheckIcon = ({ size = 18, color = colors.primary }: { size?: number; color
   </Svg>
 );
 
+const LanguageFlag = ({ size = 28 }: { size?: number }) => (
+  <Image source={require('../../assets/icons/Language.png')} style={{ width: size, height: size }} resizeMode="contain" />
+);
+
 const RefreshIcon = ({ size = 20, color = colors.primary }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-.132-8.314-.366m16.628 0c-.552 1.675-2.053 2.924-3.864 3.255m-9.622-3.255A11.952 11.952 0 0 0 12 13.5c1.884 0 3.654-.143 5.314-.416m-10.628 0c.552 1.675 2.053 2.924 3.864 3.255" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -148,12 +152,12 @@ const LanguagesScreen = () => {
           })}
         </View>
 
-        {/* Info Callout */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoIcon}>
-            <RefreshIcon size={20} color={colors.primary} />
+        {/* Warning Banner */}
+        <View style={styles.warningBanner}>
+          <View style={styles.warningIcon}>
+            <LanguageFlag size={20} />
           </View>
-          <Text style={styles.infoText}>
+          <Text style={styles.warningText}>
             {currentLanguage === 'ar'
               ? 'سيؤدي تغيير اللغة إلى إعادة تحميل التطبيق لتطبيق التغييرات.'
               : 'Changing language will reload the app to apply the changes.'}
@@ -238,15 +242,12 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   flagBox: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
     overflow: 'hidden',
   },
   flagBoxActive: {
@@ -289,30 +290,26 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontWeight: fonts.weights.medium as any,
   },
-  infoCard: {
+  warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bgCard,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: borderRadius.card,
     padding: spacing.lg,
     marginTop: spacing.xl,
     gap: spacing.md,
   },
-  infoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.bgSecondary,
+  warningIcon: {
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  infoText: {
+  warningText: {
     flex: 1,
     fontSize: fonts.sizes.sm,
-    color: colors.textSecondary,
-    fontWeight: fonts.weights.medium as any,
+    color: colors.textWarning,
+    fontWeight: fonts.weights.semibold as any,
     lineHeight: 20,
   },
 });
