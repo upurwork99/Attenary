@@ -187,8 +187,8 @@ const BossExportScreen = () => {
     return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #1a1a1a; padding: 32px; background: #0f172a; }
-  .page { background: #ffffff; border-radius: 24px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); max-width: 900px; margin: 0 auto; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #1a1a1a; margin: 0; background: #0f172a; }
+  .page { background: #ffffff; border-radius: 0; padding: 0; box-shadow: none; max-width: 900px; margin: 0 auto; }
   h1 { font-size: 28px; font-weight: 800; color: #0f172a; margin-bottom: 6px; letter-spacing: -0.5; }
   .sub { color: #64748b; font-size: 13px; margin-bottom: 18px; }
   h2 { font-size: 16px; color: #ffffff; margin-bottom: 12px; margin-top: 24px; font-weight: 700; letter-spacing: 0.2; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 12px 16px; border-radius: 14px; }
@@ -250,7 +250,7 @@ const BossExportScreen = () => {
     const container = document.createElement('div');
     container.innerHTML = html;
     Object.assign(container.style, {
-      position: 'fixed', left: '-9999px', top: '0', background: '#fff', padding: '24px', maxWidth: '800px',
+      position: 'fixed', left: '-9999px', top: '0', background: '#fff', maxWidth: '800px',
     });
     document.body.appendChild(container);
 
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: fonts.sizes.xs, fontWeight: fonts.weights.bold as any, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
   summaryValue: { fontSize: fonts.sizes.xxl, fontWeight: fonts.weights.bold as any, color: colors.textPrimary, fontFamily: 'monospace' },
   buttonsRow: { flexDirection: 'row', gap: 12, marginTop: 4, marginBottom: 8 },
-  exportButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, borderRadius: 18, paddingVertical: 16, paddingHorizontal: 12, borderWidth: 1, ...shadows.card },
+  exportButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, borderRadius: 18, paddingVertical: 16, paddingHorizontal: 12, borderWidth: 1, ...shadows.card, minHeight: 56 },
   pdfButton: { backgroundColor: '#dc2626', borderColor: '#b91c1c' },
   exportButtonText: { color: '#fff', fontSize: fonts.sizes.md, fontWeight: fonts.weights.bold as any, letterSpacing: 0.1 },
   pdfButtonGenerating: { backgroundColor: '#991b1b', borderColor: '#7f1d1d' },
