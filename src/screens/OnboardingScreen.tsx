@@ -103,7 +103,7 @@ const OnboardingScreen = () => {
       title: 'Your Email',
       subtitle: 'For backup and sync',
       description: 'Enter your email address to sync your data across devices.',
-      illustration: require('../../assets/icons/email.png'),
+      illustration: require('../../../assets/email.png'),
       inputConfig: {
         placeholder: 'e.g., john@example.com',
         keyboardType: 'email-address',
