@@ -7,7 +7,6 @@ import { useLanguage } from '../context/LanguageContext';
 import { colors, borderRadius, fonts, shadows } from '../theme/colors';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import * as XLSX from 'xlsx';
 import Svg, { Path } from 'react-native-svg';
 import * as Print from 'expo-print';
 
@@ -17,14 +16,6 @@ const { height: SCREEN_H } = Dimensions.get('window');
 
 function escHtml(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function buf(array: any): ArrayBuffer {
-  const l = array.length;
-  const buf = new ArrayBuffer(l);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i !== l; ++i) view[i] = array.charCodeAt(i) & 0xff;
-  return buf;
 }
 
 function getFilteredSessions(sessions: any[], selectedYear: string, selectedMonth: string) {
@@ -63,10 +54,7 @@ const BossExportScreen = () => {
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth()]);
   const [generating, setGenerating] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
-  const [generatedFilePath, setGeneratedFilePath] = useState<string | null>(null);
-  const [generatingExcel, setGeneratingExcel] = useState(false);
-  const [generatedExcelPath, setGeneratedExcelPath] = useState<string | null>(null);
-  const [selectedExport, setSelectedExport] = useState<'pdf' | 'excel'>('pdf');
+  const [generatedPdfPath, setGeneratedPdfPath] = useState<string | null>(null);
   const sheetTranslateY = useRef(new Animated.Value(SCREEN_H)).current;
   const sheetOpacity = useRef(new Animated.Value(0)).current;
 
@@ -128,19 +116,14 @@ const BossExportScreen = () => {
 
   const buildPdfHtml = () => {
     const employeeName = appData.employeeName || 'Employee';
-    const jobTitle = appData.jobTitle || '';
-    const department = appData.department || '';
     const email = appData.email || '';
-    const onboarding = appData.onboardingCompleted ? 'Completed' : 'Incomplete';
-    const theme = (appData.appSettings?.theme || 'dark').charAt(0).toUpperCase() + (appData.appSettings?.theme || 'dark').slice(1);
-    const notifications = appData.appSettings?.notifications ? 'Enabled' : 'Disabled';
-    const rate = appData.hourRate || 0;
-    const earnings = monthStats.totalHours * rate;
     const exportDate = new Date().toLocaleString();
 
     const filtered = getFilteredSessions(appData.sessions, selectedYear, selectedMonth);
-    const rows = filtered
-      .sort((a: any, b: any) => b.checkInTime - a.checkInTime)
+    const rate = appData.hourRate || 0;
+    const earnings = monthStats.totalHours * rate;
+    const filteredSorted = filtered.sort((a: any, b: any) => b.checkInTime - a.checkInTime);
+    const rows = filteredSorted
       .map((s: any) => {
         const d = new Date(s.checkInTime);
         const checkIn = new Date(s.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -158,7 +141,6 @@ const BossExportScreen = () => {
           <td>${hours.toFixed(2)}</td>
           <td>${sessionEarnings.toFixed(2)}</td>
           <td>${escHtml(s.reason && s.reason.trim() !== '' ? s.reason : '—')}</td>
-          <td>${escHtml(s.sessionId)}</td>
         </tr>`;
       })
       .join('');
@@ -166,238 +148,178 @@ const BossExportScreen = () => {
     return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; color: #000; padding: 24px; }
-  h1 { font-size: 20px; margin-bottom: 4px; font-family: Arial, sans-serif; }
-  .sub { color: #444; font-size: 12px; margin-bottom: 14px; font-family: Arial, sans-serif; }
-  h2 { font-size: 16px; color: #111; margin-bottom: 8px; margin-top: 18px; font-family: Arial, sans-serif; border-bottom: 2px solid #1e1e1e; padding-bottom: 4px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: Arial, sans-serif; }
-  th { background: #1e1e1e; color: #fff; padding: 8px 10px; text-align: left; font-size: 11px; letter-spacing: 0.4; font-family: Arial, sans-serif; }
-  td { padding: 8px 10px; border-bottom: 1px solid #e5e5e5; color: #111; font-family: Arial, sans-serif; }
-  tr:nth-child(even) td { background: #fafafa; }
-  .right { text-align: right; }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-  .profile-table td:first-child { font-weight: 700; color: #333; width: 35%; }
-  .summary-table tr.total td { font-weight: 700; font-size: 13px; background: #f3f4f6; }
-  .foot { margin-top: 18px; font-size: 10px; color: #777; text-align: center; font-family: Arial, sans-serif; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #1a1a1a; padding: 32px; background: #0f172a; }
+  .page { background: #ffffff; border-radius: 24px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 800; color: #0f172a; margin-bottom: 6px; letter-spacing: -0.5; }
+  .sub { color: #64748b; font-size: 13px; margin-bottom: 18px; }
+  h2 { font-size: 16px; color: #ffffff; margin-bottom: 12px; margin-top: 24px; font-weight: 700; letter-spacing: 0.2; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 12px 16px; border-radius: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f1f5f9; color: #475569; padding: 12px 14px; text-align: left; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  tr:hover td { background: #eef2ff; }
+  .right { text-align: right; font-variant-numeric: tabular-nums; }
+  .profile-table td:first-child { font-weight: 700; color: #475569; width: 38%; background: #f8fafc; }
+  .summary-table tr.total td { font-weight: 800; font-size: 15px; background: linear-gradient(90deg, #eef2ff 0%, #f5f3ff 100%); color: #4338ca; }
+  .summary-table tr.total td:last-child { color: #7c3aed; font-size: 18px; }
+  .foot { margin-top: 22px; font-size: 11px; color: #94a3b8; text-align: center; }
+  .no-data { text-align: center; color: #94a3b8; padding: 18px; font-style: italic; }
 </style></head>
 <body>
-  <h1>Attenary Hours · ${selectedMonth} ${selectedYear}</h1>
-  <div class="sub">Generated: ${exportDate} · Employee: ${escHtml(employeeName)}${jobTitle ? ' · ' + escHtml(jobTitle) : ''}${department ? ' · ' + escHtml(department) : ''}</div>
+  <div class="page">
+    <h1>Attenary Hours · ${selectedMonth} ${selectedYear}</h1>
+    <div class="sub">Generated: ${exportDate} · Employee: ${escHtml(employeeName)}</div>
 
-  <h2>Employee Profile</h2>
-  <table class="profile-table">
-    <tr><td>Name</td><td>${escHtml(employeeName)}</td></tr>
-    <tr><td>Email</td><td>${escHtml(email) || '—'}</td></tr>
-    <tr><td>Job Title</td><td>${escHtml(jobTitle) || '—'}</td></tr>
-    <tr><td>Department</td><td>${escHtml(department) || '—'}</td></tr>
-    <tr><td>Hour Rate</td><td>${rate.toFixed(2)}/hr</td></tr>
-    <tr><td>Onboarding</td><td>${onboarding}</td></tr>
-  </table>
+    <h2>Employee Profile</h2>
+    <table class="profile-table">
+      <tr><td>Name</td><td>${escHtml(employeeName)}</td></tr>
+      <tr><td>Email</td><td>${escHtml(email) || '—'}</td></tr>
+    </table>
 
-  <h2>App Settings</h2>
-  <table class="profile-table">
-    <tr><td>Theme</td><td>${theme}</td></tr>
-    <tr><td>Notifications</td><td>${notifications}</td></tr>
-  </table>
+    <h2>Period Summary</h2>
+    <table class="summary-table">
+      <tr class="total"><td>Estimated Earnings</td><td class="right">${earnings.toFixed(2)}</td></tr>
+      <tr><td>Total Hours</td><td class="right">${monthStats.totalHours.toFixed(2)}</td></tr>
+      <tr><td>Total Sessions</td><td class="right">${monthStats.sessionsCount}</td></tr>
+      <tr><td>Days Worked</td><td class="right">${monthStats.daysCount}</td></tr>
+    </table>
 
-  <h2>Period Summary</h2>
-  <table class="summary-table">
-    <tr class="total"><td>Total Hours</td><td class="right">${monthStats.totalHours.toFixed(2)}</td></tr>
-    <tr><td>Total Sessions</td><td class="right">${monthStats.sessionsCount}</td></tr>
-    <tr><td>Days Worked</td><td class="right">${monthStats.daysCount}</td></tr>
-    <tr class="total"><td>Estimated Earnings</td><td class="right">${earnings.toFixed(2)}</td></tr>
-  </table>
+    <h2>Session Details</h2>
+    <table>
+      <thead><tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Duration</th><th class="right">Hours</th><th class="right">Earnings</th><th>Reason</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="7" class="no-data">No checked-out sessions in this period.</td></tr>'}</tbody>
+    </table>
 
-  <h2>Session Details</h2>
-  <table>
-    <thead><tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Duration</th><th class="right">Hours</th><th class="right">Earnings</th><th>Reason</th><th>Session ID</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="8" style="text-align:center;color:#888;">No checked-out sessions in this period.</td></tr>'}</tbody>
-  </table>
-
-  <div class="foot">Generated on ${exportDate} · Total ${monthStats.totalHours.toFixed(2)} hrs · Earnings ${earnings.toFixed(2)} · Attenary v3.23.7</div>
+    <div class="foot">Generated on ${exportDate} · Total ${monthStats.totalHours.toFixed(2)} hrs · Earnings ${earnings.toFixed(2)} · Attenary v3.23.7</div>
+  </div>
 </body></html>`;
   };
 
   const generatePdfFile = async (): Promise<string | null> => {
+    if (Platform.OS === 'web') {
+      return generatePdfWeb();
+    }
     const html = buildPdfHtml();
     const { printToFileAsync } = await import('expo-print');
     const { uri } = await printToFileAsync({ html, base64: false });
-    setGeneratedFilePath(uri);
+    setGeneratedPdfPath(uri);
     return uri;
   };
 
-  const generateExcelFile = async (): Promise<string | null> => {
-    const filtered = getFilteredSessions(appData.sessions, selectedYear, selectedMonth);
-    const rate = appData.hourRate || 0;
-    const employeeName = appData.employeeName || 'Employee';
-    const email = appData.email || '';
-    const jobTitle = appData.jobTitle || '';
-    const department = appData.department || '';
-    const onboarding = appData.onboardingCompleted ? 'Completed' : 'Incomplete';
-    const theme = (appData.appSettings?.theme || 'dark').charAt(0).toUpperCase() + (appData.appSettings?.theme || 'dark').slice(1);
-    const notifications = appData.appSettings?.notifications ? 'Enabled' : 'Disabled';
-    const exportDate = new Date().toLocaleString();
-    const daysWorked = new Set(filtered.map((s: any) => new Date(s.checkInTime).toDateString())).size;
-
-    const profileSheet = XLSX.utils.aoa_to_sheet([
-      ['EMPLOYEE PROFILE'],
-      ['Employee Name', employeeName],
-      ['Email', email || '—'],
-      ['Job Title', jobTitle || '—'],
-      ['Department', department || '—'],
-      ['Hour Rate ($/hr)', rate],
-      ['Onboarding', onboarding],
-      [],
-      ['EXPORT INFORMATION'],
-      ['Generated On', exportDate],
-      ['Period', `${selectedMonth} ${selectedYear}`],
-      ['App Version', '3.23.7'],
-      [],
-      ['APP SETTINGS'],
-      ['Theme', theme],
-      ['Notifications', notifications],
-    ]);
-    profileSheet['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
-      { s: { r: 8, c: 0 }, e: { r: 8, c: 1 } },
-      { s: { r: 12, c: 0 }, e: { r: 12, c: 1 } },
-    ];
-    profileSheet['!cols'] = [{ wch: 22 }, { wch: 22 }];
-
-    const summarySheet = XLSX.utils.aoa_to_sheet([
-      ['PERIOD SUMMARY'],
-      [],
-      ['Metric', 'Value'],
-      ['Total Hours', "=SUM('Session Details'!E2:E1000)"],
-      ['Total Sessions', "=COUNTA('Session Details'!H2:H1000)"],
-      ['Days Worked', daysWorked],
-      ['Hour Rate ($/hr)', rate],
-      ['Estimated Earnings', "=B4*B7"],
-      [],
-      ['Generated On', exportDate],
-    ]);
-    summarySheet['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } },
-    ];
-    summarySheet['!cols'] = [{ wch: 22 }, { wch: 18 }];
-    if (summarySheet['B4']) summarySheet['B4'].z = '#,##0.00';
-    if (summarySheet['B5']) summarySheet['B5'].z = '0';
-    if (summarySheet['B6']) summarySheet['B6'].z = '0';
-    if (summarySheet['B7']) summarySheet['B7'].z = '#,##0.00';
-    if (summarySheet['B8']) summarySheet['B8'].z = '#,##0.00';
-    if (summarySheet['B10']) summarySheet['B10'].z = '@';
-
-    const sessionColumns = ['Date', 'Check In', 'Check Out', 'Duration', 'Total Hours', 'Earnings', 'Reason', 'Session ID'];
-    const sessionRows = filtered.map((s: any) => {
-      const d = new Date(s.checkInTime);
-      const ms = s.checkOutTime - s.checkInTime;
-      const hours = ms / 3600000;
-      const checkIn = new Date(s.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-      const checkOut = new Date(s.checkOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-      const durationH = Math.floor(ms / 3600000);
-      const durationM = Math.floor((ms % 3600000) / 60000);
-      return [
-        d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-        checkIn,
-        checkOut,
-        `${durationH}h ${durationM}m`,
-        parseFloat(hours.toFixed(2)),
-        '',
-        s.reason && s.reason.trim() !== '' ? s.reason : '—',
-        s.sessionId,
-      ];
+  const generatePdfWeb = async (): Promise<string | null> => {
+    const html = buildPdfHtml();
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    Object.assign(container.style, {
+      position: 'fixed', left: '-9999px', top: '0', background: '#fff', padding: '24px', maxWidth: '800px',
     });
+    document.body.appendChild(container);
 
-    const sessionSheet = XLSX.utils.aoa_to_sheet([sessionColumns, ...sessionRows]);
-    sessionSheet['!cols'] = [
-      { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
-      { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 28 },
-    ];
-    sessionSheet['!rows'] = [
-      { hpt: 20 },
-      ...sessionRows.map(() => ({ hpt: 16 })),
-    ];
-
-    for (let i = 0; i < sessionRows.length; i++) {
-      const rowNum = i + 2;
-      sessionSheet[`F${rowNum}`] = `=E${rowNum}*Summary!$B$7`;
-      sessionSheet[`F${rowNum}`].z = '#,##0.00';
+    try {
+      const [{ default: html2canvasLib }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+      const canvas = await html2canvasLib(container, { scale: 2, useCORS: true, backgroundColor: '#fff' } as any);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
+      pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+      const pdfFile = pdf.output('blob');
+      const url = URL.createObjectURL(pdfFile);
+      setGeneratedPdfPath(url);
+      return url;
+    } finally {
+      document.body.removeChild(container);
     }
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-    XLSX.utils.book_append_sheet(workbook, sessionSheet, 'Session Details');
-    XLSX.utils.book_append_sheet(workbook, profileSheet, 'Profile');
-
-    const wbout = XLSX.write(workbook, { type: 'binary', bookType: 'xlsx' });
-    const fileName = `Attenary-BossExport-${selectedMonth}-${selectedYear}.xlsx`;
-    const fs = FileSystem as any;
-    const destPath = fs.documentDirectory + fileName;
-    await fs.writeAsStringAsync(destPath, buf(wbout), { encoding: fs.EncodingType.Base64 });
-    setGeneratedExcelPath(destPath);
-    return destPath;
   };
 
   const handleGeneratePdf = async () => {
-    setSelectedExport('pdf');
-    openSheet();
-  };
-
-  const handleGenerateExcel = async () => {
-    setSelectedExport('excel');
-    openSheet();
-  };
-
-  const handleGenerateWithOption = async (option: 'save' | 'whatsapp' | 'telegram' | 'gmail' | 'native') => {
     try {
-      if (selectedExport === 'pdf' && !generatedFilePath) {
-        setGenerating(true);
-        const uri = await generatePdfFile();
-        if (uri) setGeneratedFilePath(uri);
-        setGenerating(false);
-      } else if (selectedExport === 'excel' && !generatedExcelPath) {
-        setGeneratingExcel(true);
-        const path = await generateExcelFile();
-        if (path) setGeneratedExcelPath(path);
-        setGeneratingExcel(false);
+      setGenerating(true);
+      const uri = await generatePdfFile();
+      if (uri) {
+        setGeneratedPdfPath(uri);
+        openSheet();
+      } else {
+        Alert.alert(t('common.error'), t('bossExport.generateFailedPdf'));
       }
+    } catch (error) {
+      console.log('PDF generation error:', error);
+      Alert.alert(t('common.error'), t('bossExport.generateFailedPdf'));
+    } finally {
+      setGenerating(false);
+    }
+  };
 
-      const filePath = selectedExport === 'pdf' ? generatedFilePath : generatedExcelPath;
-      const fileName = `Attenary-BossExport-${selectedMonth}-${selectedYear}.${selectedExport === 'pdf' ? 'pdf' : 'xlsx'}`;
-      if (!filePath) {
-        Alert.alert(t('common.error'), selectedExport === 'pdf' ? t('bossExport.generateFailedPdf') : t('bossExport.generateFailedExcel'));
-        return;
-      }
+  const handleShareOption = async (option: 'save' | 'whatsapp' | 'telegram' | 'gmail' | 'native') => {
+    if (!generatedPdfPath) {
+      Alert.alert(t('common.error'), t('bossExport.generateFailedPdf'));
+      return;
+    }
 
-      if (option === 'save') {
-        Alert.alert(t('common.success'), selectedExport === 'pdf' ? t('bossExport.savedPdf') : t('bossExport.savedExcel'));
+    try {
+      const fileName = `Attenary-BossExport-${selectedMonth}-${selectedYear}.pdf`;
+
+      if (Platform.OS === 'web') {
+        if (option === 'save' || option === 'native') {
+          const link = document.createElement('a');
+          link.href = generatedPdfPath;
+          link.download = fileName;
+          link.click();
+          URL.revokeObjectURL(generatedPdfPath);
+          if (option === 'save') {
+            Alert.alert(t('common.success'), t('bossExport.savedPdf'));
+          }
+          closeSheet();
+          return;
+        }
+
+        const text = `Attenary Hours Report - ${selectedMonth} ${selectedYear}`;
+        if (navigator.share) {
+          try {
+            const response = await fetch(generatedPdfPath);
+            const blob = await response.blob();
+            const file = new File([blob], fileName, { type: 'application/pdf' });
+            await (navigator as any).share({ title: 'Attenary Hours Report', text, files: [file] });
+            closeSheet();
+            return;
+          } catch {
+            const link = document.createElement('a');
+            link.href = generatedPdfPath;
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(generatedPdfPath);
+            closeSheet();
+            return;
+          }
+        }
+
+        const link = document.createElement('a');
+        link.href = generatedPdfPath;
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(generatedPdfPath);
         closeSheet();
         return;
       }
 
-      closeSheet();
       const fs = FileSystem as any;
       const destPath = fs.documentDirectory + fileName;
-      await fs.copyAsync({ from: filePath, to: destPath });
 
-      if (Platform.OS === 'web') {
-        const url = URL.createObjectURL(new Blob([await fs.readAsStringAsync(filePath, { encoding: fs.EncodingType.Base64 })]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        link.click();
-        URL.revokeObjectURL(url);
+      if (option === 'save') {
+        await fs.copyAsync({ from: generatedPdfPath, to: destPath });
+        Alert.alert(t('common.success'), t('bossExport.savedPdf'));
+        closeSheet();
         return;
       }
+
+      await fs.copyAsync({ from: generatedPdfPath, to: destPath });
+      closeSheet();
 
       if (option === 'native') {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          const mimeType = selectedExport === 'pdf'
-            ? 'application/pdf'
-            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-          await Sharing.shareAsync(destPath, { mimeType, dialogTitle: 'Share Boss Export' });
+          await Sharing.shareAsync(destPath, { mimeType: 'application/pdf', dialogTitle: 'Share Boss Export' });
         } else {
           Alert.alert(t('bossExport.sharingNotAvailable'), t('bossExport.sharingNotAvailableDevice'));
         }
@@ -426,16 +348,11 @@ const BossExportScreen = () => {
       if (canOpen) {
         await Linking.openURL(appScheme);
       } else {
-        const mimeType = selectedExport === 'pdf'
-          ? 'application/pdf'
-          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-        await Sharing.shareAsync(shareUrl, { mimeType, dialogTitle: 'Share Boss Export' });
+        await Sharing.shareAsync(shareUrl, { mimeType: 'application/pdf', dialogTitle: 'Share Boss Export' });
       }
     } catch (error) {
-      console.log('Option error:', error);
-      Alert.alert(t('common.error'), selectedExport === 'pdf' ? t('bossExport.generateFailedPdf') : t('bossExport.generateFailedExcel'));
-      setGenerating(false);
-      setGeneratingExcel(false);
+      console.log('Share error:', error);
+      Alert.alert(t('common.error'), t('bossExport.shareFailed'));
     }
   };
 
@@ -506,12 +423,8 @@ const BossExportScreen = () => {
         </View>
 
         <View style={styles.buttonsRow}>
-          <TouchableOpacity style={[styles.exportButton, styles.pdfButton]} onPress={handleGeneratePdf} activeOpacity={0.8} disabled={generating || generatingExcel}>
+          <TouchableOpacity style={[styles.exportButton, styles.pdfButton]} onPress={handleGeneratePdf} activeOpacity={0.8} disabled={generating}>
             <Text style={styles.exportButtonText}>{generating ? t('bossExport.generating') : 'Generate PDF'}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.exportButton, styles.excelButton]} onPress={handleGenerateExcel} activeOpacity={0.8} disabled={generating || generatingExcel}>
-            <Text style={styles.exportButtonText}>{generatingExcel ? t('bossExport.generating') : 'Generate Excel'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -521,40 +434,38 @@ const BossExportScreen = () => {
             <Animated.View style={[styles.sheetCardAnimated, { transform: [{ translateY: sheetTranslateY }] }]}>
               <View style={styles.dragHandle} />
               <Text style={styles.sheetTitle}>{t('bossExport.shareTitle')}</Text>
-              <Text style={styles.sheetSubtitle}>
-                {selectedExport === 'pdf' ? t('bossExport.shareSubtitlePdf') : t('bossExport.shareSubtitleExcel')}
-              </Text>
+              <Text style={styles.sheetSubtitle}>{t('bossExport.shareSubtitlePdf')}</Text>
 
               <View style={styles.shareOptions}>
-                <TouchableOpacity style={styles.shareOption} onPress={() => handleGenerateWithOption('save')}>
+                <TouchableOpacity style={styles.shareOption} onPress={() => handleShareOption('save')}>
                   <View style={[styles.shareIconBox, { backgroundColor: '#e2e8f0' }]}>
                     <FileIcon size={20} color="#0f172a" />
                   </View>
                   <Text style={styles.shareLabel}>{t('bossExport.saveLocal')}</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.shareOption} onPress={() => handleGenerateWithOption('whatsapp')}>
+                <TouchableOpacity style={styles.shareOption} onPress={() => handleShareOption('whatsapp')}>
                   <View style={[styles.shareIconBox, { backgroundColor: '#dcfce7' }]}>
                     <ShareIcon size={20} color="#166534" />
                   </View>
                   <Text style={styles.shareLabel}>{t('bossExport.whatsapp')}</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.shareOption} onPress={() => handleGenerateWithOption('telegram')}>
+                <TouchableOpacity style={styles.shareOption} onPress={() => handleShareOption('telegram')}>
                   <View style={[styles.shareIconBox, { backgroundColor: '#e0e7ff' }]}>
                     <ShareIcon size={20} color="#3730a3" />
                   </View>
                   <Text style={styles.shareLabel}>{t('bossExport.telegram')}</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.shareOption} onPress={() => handleGenerateWithOption('gmail')}>
+                <TouchableOpacity style={styles.shareOption} onPress={() => handleShareOption('gmail')}>
                   <View style={[styles.shareIconBox, { backgroundColor: '#fee2e2' }]}>
                     <ShareIcon size={20} color="#991b1b" />
                   </View>
                   <Text style={styles.shareLabel}>{t('bossExport.gmail')}</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.shareOption} onPress={() => handleGenerateWithOption('native')}>
+                <TouchableOpacity style={styles.shareOption} onPress={() => handleShareOption('native')}>
                   <View style={[styles.shareIconBox, { backgroundColor: '#f1f5f9' }]}>
                     <ShareIcon size={20} color="#0f172a" />
                   </View>
@@ -596,9 +507,6 @@ const styles = StyleSheet.create({
   buttonsRow: { flexDirection: 'row', gap: 12, marginTop: 4, marginBottom: 8 },
   exportButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, borderRadius: 18, paddingVertical: 16, paddingHorizontal: 12, borderWidth: 1, ...shadows.card },
   pdfButton: { backgroundColor: '#dc2626', borderColor: '#b91c1c' },
-  excelButton: { backgroundColor: '#16a34a', borderColor: '#15803d' },
-  iconBadge: { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)' },
-  iconEmoji: { fontSize: 20, color: '#fff' },
   exportButtonText: { color: '#fff', fontSize: fonts.sizes.md, fontWeight: fonts.weights.bold as any, letterSpacing: 0.1 },
   sheetOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', zIndex: 50 },
   sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.72)' },
