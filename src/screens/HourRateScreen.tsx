@@ -14,7 +14,7 @@ function getFlagEmoji(currencyCode) {
     usd: 'US', eur: 'EU', gbp: 'GB', jpy: 'JP', cad: 'CA',
     aud: 'AU', cny: 'CN', inr: 'IN', chf: 'CH', egp: 'EG',
     kwd: 'KW', sar: 'SA', aed: 'AE', bhd: 'BH', omr: 'OM',
-    qar: 'QA', jod: 'JO', lbp: 'LB', ils: 'IL', try: 'TR',
+    qar: 'QA', jod: 'JO', lbp: 'LB',     ils: 'PS', try: 'TR',
     rub: 'RU', krw: 'KR', sgd: 'SG', hkd: 'HK',
     nzd: 'NZ', zar: 'ZA', brl: 'BR', mxn: 'MX', ars: 'AR',
     clp: 'CL', cop: 'CO', pen: 'PE', vef: 'VE', uyu: 'UY',
@@ -67,7 +67,7 @@ const CURRENCIES = [
   { code: 'OMR', name: 'Omani Rial' },
   { code: 'JOD', name: 'Jordanian Dinar' },
   { code: 'LBP', name: 'Lebanese Pound' },
-  { code: 'ILS', name: 'Israeli Shekel' },
+  { code: 'ILS', name: 'Palestinian Shekel' },
   { code: 'TRY', name: 'Turkish Lira' },
   { code: 'RUB', name: 'Russian Ruble' },
   { code: 'CNY', name: 'Chinese Yuan' },
@@ -422,8 +422,8 @@ const HourRateScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgMain },
-  content: { flex: 1 },
-  scrollContent: { padding: 16, paddingTop: 24 },
+  content: { flex: 1, backgroundColor: colors.bgMain },
+  scrollContent: { padding: 16, paddingTop: 24, paddingBottom: 100 },
   headerSection: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingHorizontal: 4, gap: 12 },
   backButton: { width: 40, height: 40, borderRadius: borderRadius.md, backgroundColor: colors.bgCard, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border },
   headerText: { flex: 1 },

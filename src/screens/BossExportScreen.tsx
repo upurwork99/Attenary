@@ -1,15 +1,39 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, TextInput, ScrollView, Alert, Platform, Linking } from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, Platform, Linking, Animated, Easing, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
-import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
+import { colors, borderRadius, fonts, shadows } from '../theme/colors';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import Svg, { Path, Circle } from 'react-native-svg';
+import * as XLSX from 'xlsx';
+import Svg, { Path } from 'react-native-svg';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const { height: SCREEN_H } = Dimensions.get('window');
+
+function escHtml(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function buf(array: any): ArrayBuffer {
+  const l = array.length;
+  const buf = new ArrayBuffer(l);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i !== l; ++i) view[i] = array.charCodeAt(i) & 0xff;
+  return buf;
+}
+
+function getFilteredSessions(sessions: any[], selectedYear: string, selectedMonth: string) {
+  return sessions
+    .filter((s: any) => {
+      const d = new Date(s.checkInTime);
+      return d.getFullYear().toString() === selectedYear && MONTHS[d.getMonth()] === selectedMonth && s.checkOutTime !== null;
+    })
+    .sort((a: any, b: any) => b.checkInTime - a.checkInTime);
+}
 
 const BackIcon = ({ size = 24 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -39,6 +63,30 @@ const BossExportScreen = () => {
   const [generating, setGenerating] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [generatedFilePath, setGeneratedFilePath] = useState<string | null>(null);
+  const [generatingExcel, setGeneratingExcel] = useState(false);
+  const [generatedExcelPath, setGeneratedExcelPath] = useState<string | null>(null);
+  const [selectedExport, setSelectedExport] = useState<'pdf' | 'excel'>('pdf');
+  const sheetTranslateY = useRef(new Animated.Value(SCREEN_H)).current;
+  const sheetOpacity = useRef(new Animated.Value(0)).current;
+
+  const openSheet = () => {
+    setShowShareSheet(true);
+    sheetTranslateY.setValue(SCREEN_H);
+    sheetOpacity.setValue(0);
+    Animated.parallel([
+      Animated.timing(sheetTranslateY, { toValue: 0, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(sheetOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+    ]).start();
+  };
+  const closeSheet = (cb?: () => void) => {
+    Animated.parallel([
+      Animated.timing(sheetTranslateY, { toValue: SCREEN_H, duration: 300, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(sheetOpacity, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start(() => {
+      setShowShareSheet(false);
+      cb?.();
+    });
+  };
 
   const years = useMemo(() => {
     const uniqueYears = new Set<number>();
@@ -47,174 +95,126 @@ const BossExportScreen = () => {
     return Array.from(uniqueYears).sort((a, b) => b - a);
   }, [appData.sessions]);
 
-  const monthIndex = MONTHS.indexOf(selectedMonth);
-
   const monthStats = useMemo(() => {
-    const filtered = appData.sessions.filter((s: any) => {
+    const filtered = appData.sessions;
+    const stats = {
+      totalSeconds: 0,
+      totalHours: 0,
+      sessionsCount: 0,
+      daysCount: 0,
+    };
+
+    filtered.forEach((s: any) => {
       const date = new Date(s.checkInTime);
-      return date.getFullYear().toString() === selectedYear && MONTHS[date.getMonth()] === selectedMonth && s.checkOutTime !== null;
+      if (date.getFullYear().toString() === selectedYear && MONTHS[date.getMonth()] === selectedMonth && s.checkOutTime !== null) {
+        stats.sessionsCount++;
+        stats.totalSeconds += Math.floor((s.checkOutTime - s.checkInTime) / 1000);
+      }
     });
-    const totalSeconds = filtered.reduce((sum: number, s: any) => sum + Math.floor((s.checkOutTime - s.checkInTime) / 1000), 0);
-    return { totalSeconds, totalHours: totalSeconds / 3600, sessionsCount: filtered.length, daysCount: new Set(filtered.map((s: any) => new Date(s.checkInTime).getDate())).size };
+
+    stats.totalHours = stats.totalSeconds / 3600;
+    stats.daysCount = new Set(
+      filtered
+        .filter((s: any) => {
+          const date = new Date(s.checkInTime);
+          return date.getFullYear().toString() === selectedYear && MONTHS[date.getMonth()] === selectedMonth && s.checkOutTime !== null;
+        })
+        .map((s: any) => new Date(s.checkInTime).getDate())
+    ).size;
+
+    return stats;
   }, [appData.sessions, selectedYear, selectedMonth]);
 
   const buildPdfHtml = () => {
     const employeeName = appData.employeeName || 'Employee';
     const jobTitle = appData.jobTitle || '';
     const department = appData.department || '';
+    const email = appData.email || '';
+    const onboarding = appData.onboardingCompleted ? 'Completed' : 'Incomplete';
+    const theme = (appData.appSettings?.theme || 'dark').charAt(0).toUpperCase() + (appData.appSettings?.theme || 'dark').slice(1);
+    const notifications = appData.appSettings?.notifications ? 'Enabled' : 'Disabled';
     const rate = appData.hourRate || 0;
-    const earnings = (monthStats.totalHours) * rate;
-    const sectionDaily = t('bossExport.sectionDaily');
-    const sectionSession = t('bossExport.sectionSession');
+    const earnings = monthStats.totalHours * rate;
+    const exportDate = new Date().toLocaleString();
 
-    return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; padding: 32px; }
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
-        .brand { display: flex; align-items: center; gap: 12px; }
-        .brand-icon { width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px; }
-        .brand-name { font-size: 20px; font-weight: 700; color: #0f172a; }
-        .report-meta { text-align: right; font-size: 12px; color: #64748b; }
-        .title { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-        .subtitle { font-size: 14px; color: #64748b; margin-bottom: 24px; }
-        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
-        .card { background: #f8fafc; border-radius: 16px; padding: 18px; border: 1px solid #e2e8f0; }
-        .card-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.8; margin-bottom: 6px; }
-        .card-value { font-size: 22px; font-weight: 700; color: #0f172a; }
-        .card-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
-        .section { margin-top: 28px; }
-        .section-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.8; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: left; padding: 10px 12px; background: #f1f5f9; color: #475569; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6; }
-        td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a; }
-        tr:last-child td { border-bottom: none; }
-        .amount { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-        .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div class="brand">
-          <div class="brand-icon">A</div>
-          <div class="brand-name">Attenary</div>
-        </div>
-        <div class="report-meta">
-          <div>Generated: ${new Date().toLocaleDateString()}</div>
-          <div>Period: ${selectedMonth} ${selectedYear}</div>
-        </div>
-      </div>
+    const filtered = getFilteredSessions(appData.sessions, selectedYear, selectedMonth);
+    const rows = filtered
+      .sort((a: any, b: any) => b.checkInTime - a.checkInTime)
+      .map((s: any) => {
+        const d = new Date(s.checkInTime);
+        const checkIn = new Date(s.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const checkOut = new Date(s.checkOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const ms = s.checkOutTime - s.checkInTime;
+        const hrs = Math.floor(ms / 3600000);
+        const mins = Math.floor((ms % 3600000) / 60000);
+        const hours = ms / 3600000;
+        const sessionEarnings = hours * rate;
+        return `<tr>
+          <td>${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+          <td>${checkIn}</td>
+          <td>${checkOut}</td>
+          <td>${hrs}h ${mins}m</td>
+          <td>${hours.toFixed(2)}</td>
+          <td>${sessionEarnings.toFixed(2)}</td>
+          <td>${escHtml(s.reason && s.reason.trim() !== '' ? s.reason : '—')}</td>
+          <td>${escHtml(s.sessionId)}</td>
+        </tr>`;
+      })
+      .join('');
 
-      <div class="title">Boss Export</div>
-      <div class="subtitle">Hours report for ${employeeName}${jobTitle ? ` · ${jobTitle}` : ''}${department ? ` · ${department}` : ''}</div>
+    return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; color: #000; padding: 24px; }
+  h1 { font-size: 20px; margin-bottom: 4px; font-family: Arial, sans-serif; }
+  .sub { color: #444; font-size: 12px; margin-bottom: 14px; font-family: Arial, sans-serif; }
+  h2 { font-size: 16px; color: #111; margin-bottom: 8px; margin-top: 18px; font-family: Arial, sans-serif; border-bottom: 2px solid #1e1e1e; padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: Arial, sans-serif; }
+  th { background: #1e1e1e; color: #fff; padding: 8px 10px; text-align: left; font-size: 11px; letter-spacing: 0.4; font-family: Arial, sans-serif; }
+  td { padding: 8px 10px; border-bottom: 1px solid #e5e5e5; color: #111; font-family: Arial, sans-serif; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .right { text-align: right; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  .profile-table td:first-child { font-weight: 700; color: #333; width: 35%; }
+  .summary-table tr.total td { font-weight: 700; font-size: 13px; background: #f3f4f6; }
+  .foot { margin-top: 18px; font-size: 10px; color: #777; text-align: center; font-family: Arial, sans-serif; }
+</style></head>
+<body>
+  <h1>Attenary Hours · ${selectedMonth} ${selectedYear}</h1>
+  <div class="sub">Generated: ${exportDate} · Employee: ${escHtml(employeeName)}${jobTitle ? ' · ' + escHtml(jobTitle) : ''}${department ? ' · ' + escHtml(department) : ''}</div>
 
-      <div class="grid">
-        <div class="card">
-          <div class="card-label">Total Hours</div>
-          <div class="card-value">${monthStats.totalHours.toFixed(2)}</div>
-          <div class="card-sub">in ${selectedMonth} ${selectedYear}</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Sessions</div>
-          <div class="card-value">${monthStats.sessionsCount}</div>
-          <div class="card-sub">completed sessions</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Days Worked</div>
-          <div class="card-value">${monthStats.daysCount}</div>
-          <div class="card-sub">active days</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Earnings (est.)</div>
-          <div class="card-value amount">${earnings.toFixed(2)}</div>
-          <div class="card-sub">at ${rate.toFixed(2)} / hour</div>
-        </div>
-      </div>
+  <h2>Employee Profile</h2>
+  <table class="profile-table">
+    <tr><td>Name</td><td>${escHtml(employeeName)}</td></tr>
+    <tr><td>Email</td><td>${escHtml(email) || '—'}</td></tr>
+    <tr><td>Job Title</td><td>${escHtml(jobTitle) || '—'}</td></tr>
+    <tr><td>Department</td><td>${escHtml(department) || '—'}</td></tr>
+    <tr><td>Hour Rate</td><td>${rate.toFixed(2)}/hr</td></tr>
+    <tr><td>Onboarding</td><td>${onboarding}</td></tr>
+  </table>
 
-      <div class="section">
-        <div class="section-title">${sectionDaily}</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Hours</th>
-              <th>Earnings</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${appData.sessions
-              .filter((s: any) => {
-                const d = new Date(s.checkInTime);
-                return d.getFullYear().toString() === selectedYear && MONTHS[d.getMonth()] === selectedMonth && s.checkOutTime !== null;
-              })
-              .sort((a: any, b: any) => b.checkInTime - a.checkInTime)
-              .map((s: any) => {
-                const d = new Date(s.checkInTime);
-                const hours = Math.floor((s.checkOutTime - s.checkInTime) / 3600);
-                const mins = Math.floor(((s.checkOutTime - s.checkInTime) % 3600) / 60);
-                const dayEarnings = ((s.checkOutTime - s.checkInTime) / 3600000) * rate;
-                return `
-                  <tr>
-                    <td>${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
-                    <td>${hours}h ${mins}m</td>
-                    <td class="amount">${dayEarnings.toFixed(2)}</td>
-                  </tr>
-                `;
-              })
-              .join('')}
-          </tbody>
-        </table>
-      </div>
+  <h2>App Settings</h2>
+  <table class="profile-table">
+    <tr><td>Theme</td><td>${theme}</td></tr>
+    <tr><td>Notifications</td><td>${notifications}</td></tr>
+  </table>
 
-      <div class="section">
-        <div class="section-title">${sectionSession}</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Check In</th>
-              <th>Check Out</th>
-              <th>Duration</th>
-              <th>Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${appData.sessions
-              .filter((s: any) => {
-                const d = new Date(s.checkInTime);
-                return d.getFullYear().toString() === selectedYear && MONTHS[d.getMonth()] === selectedMonth && s.checkOutTime !== null;
-              })
-              .sort((a: any, b: any) => b.checkInTime - a.checkInTime)
-              .map((s: any) => {
-                const d = new Date(s.checkInTime);
-                const checkIn = new Date(s.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-                const checkOut = new Date(s.checkOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-                const durationHours = Math.floor((s.checkOutTime - s.checkInTime) / 3600);
-                const durationMins = Math.floor(((s.checkOutTime - s.checkInTime) % 3600) / 60);
-                const reason = s.reason && s.reason.trim() !== '' ? s.reason : '—';
-                return `
-                  <tr>
-                    <td>${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                    <td>${checkIn}</td>
-                    <td>${checkOut}</td>
-                    <td>${durationHours}h ${durationMins}m</td>
-                    <td>${reason}</td>
-                  </tr>
-                `;
-              })
-              .join('')}
-          </tbody>
-        </table>
-      </div>
+  <h2>Period Summary</h2>
+  <table class="summary-table">
+    <tr class="total"><td>Total Hours</td><td class="right">${monthStats.totalHours.toFixed(2)}</td></tr>
+    <tr><td>Total Sessions</td><td class="right">${monthStats.sessionsCount}</td></tr>
+    <tr><td>Days Worked</td><td class="right">${monthStats.daysCount}</td></tr>
+    <tr class="total"><td>Estimated Earnings</td><td class="right">${earnings.toFixed(2)}</td></tr>
+  </table>
 
-      <div class="footer">Attenary · Time Tracking Made Simple · Generated on ${new Date().toLocaleString()}</div>
-    </body>
-    </html>
-    `;
+  <h2>Session Details</h2>
+  <table>
+    <thead><tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Duration</th><th class="right">Hours</th><th class="right">Earnings</th><th>Reason</th><th>Session ID</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="8" style="text-align:center;color:#888;">No checked-out sessions in this period.</td></tr>'}</tbody>
+  </table>
+
+  <div class="foot">Generated on ${exportDate} · Total ${monthStats.totalHours.toFixed(2)} hrs · Earnings ${earnings.toFixed(2)} · Attenary v3.23.7</div>
+</body></html>`;
   };
 
   const handleGeneratePdf = async () => {
@@ -224,26 +224,153 @@ const BossExportScreen = () => {
       const { printToFileAsync } = await import('expo-print');
       const { uri } = await printToFileAsync({ html, base64: false });
       setGeneratedFilePath(uri);
-      setShowShareSheet(true);
+      setSelectedExport('pdf');
+      openSheet();
     } catch (error) {
       console.log('PDF generation error:', error);
-      Alert.alert(t('common.error'), t('bossExport.generateFailed'));
+      Alert.alert(t('common.error'), t('bossExport.generateFailedPdf'));
     } finally {
       setGenerating(false);
     }
   };
 
+  const handleGenerateExcel = async () => {
+    try {
+      setGeneratingExcel(true);
+
+      const filtered = getFilteredSessions(appData.sessions, selectedYear, selectedMonth);
+      const rate = appData.hourRate || 0;
+      const employeeName = appData.employeeName || 'Employee';
+      const email = appData.email || '';
+      const jobTitle = appData.jobTitle || '';
+      const department = appData.department || '';
+      const onboarding = appData.onboardingCompleted ? 'Completed' : 'Incomplete';
+      const theme = (appData.appSettings?.theme || 'dark').charAt(0).toUpperCase() + (appData.appSettings?.theme || 'dark').slice(1);
+      const notifications = appData.appSettings?.notifications ? 'Enabled' : 'Disabled';
+      const exportDate = new Date().toLocaleString();
+      const daysWorked = new Set(filtered.map((s: any) => new Date(s.checkInTime).toDateString())).size;
+
+      const profileSheet = XLSX.utils.aoa_to_sheet([
+        ['EMPLOYEE PROFILE'],
+        ['Employee Name', employeeName],
+        ['Email', email || '—'],
+        ['Job Title', jobTitle || '—'],
+        ['Department', department || '—'],
+        ['Hour Rate ($/hr)', rate],
+        ['Onboarding', onboarding],
+        [],
+        ['EXPORT INFORMATION'],
+        ['Generated On', exportDate],
+        ['Period', `${selectedMonth} ${selectedYear}`],
+        ['App Version', '3.23.7'],
+        [],
+        ['APP SETTINGS'],
+        ['Theme', theme],
+        ['Notifications', notifications],
+      ]);
+      profileSheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+        { s: { r: 8, c: 0 }, e: { r: 8, c: 1 } },
+        { s: { r: 12, c: 0 }, e: { r: 12, c: 1 } },
+      ];
+      profileSheet['!cols'] = [{ wch: 22 }, { wch: 22 }];
+
+      const summarySheet = XLSX.utils.aoa_to_sheet([
+        ['PERIOD SUMMARY'],
+        [],
+        ['Metric', 'Value'],
+        ['Total Hours', "=SUM('Session Details'!E2:E1000)"],
+        ['Total Sessions', "=COUNTA('Session Details'!H2:H1000)"],
+        ['Days Worked', daysWorked],
+        ['Hour Rate ($/hr)', rate],
+        ['Estimated Earnings', "=B4*B7"],
+        [],
+        ['Generated On', exportDate],
+      ]);
+      summarySheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } },
+      ];
+      summarySheet['!cols'] = [{ wch: 22 }, { wch: 18 }];
+      if (summarySheet['B4']) summarySheet['B4'].z = '#,##0.00';
+      if (summarySheet['B5']) summarySheet['B5'].z = '0';
+      if (summarySheet['B6']) summarySheet['B6'].z = '0';
+      if (summarySheet['B7']) summarySheet['B7'].z = '#,##0.00';
+      if (summarySheet['B8']) summarySheet['B8'].z = '#,##0.00';
+      if (summarySheet['B10']) summarySheet['B10'].z = '@';
+
+      const sessionColumns = ['Date', 'Check In', 'Check Out', 'Duration', 'Total Hours', 'Earnings', 'Reason', 'Session ID'];
+      const sessionRows = filtered.map((s: any) => {
+        const d = new Date(s.checkInTime);
+        const ms = s.checkOutTime - s.checkInTime;
+        const hours = ms / 3600000;
+        const checkIn = new Date(s.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const checkOut = new Date(s.checkOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const durationH = Math.floor(ms / 3600000);
+        const durationM = Math.floor((ms % 3600000) / 60000);
+        return [
+          d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+          checkIn,
+          checkOut,
+          `${durationH}h ${durationM}m`,
+          parseFloat(hours.toFixed(2)),
+          '',
+          s.reason && s.reason.trim() !== '' ? s.reason : '—',
+          s.sessionId,
+        ];
+      });
+
+      const sessionSheet = XLSX.utils.aoa_to_sheet([sessionColumns, ...sessionRows]);
+      sessionSheet['!cols'] = [
+        { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+        { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 28 },
+      ];
+      sessionSheet['!rows'] = [
+        { hpt: 20 },
+        ...sessionRows.map(() => ({ hpt: 16 })),
+      ];
+
+      for (let i = 0; i < sessionRows.length; i++) {
+        const rowNum = i + 2;
+        sessionSheet[`F${rowNum}`] = `=E${rowNum}*Summary!$B$7`;
+        sessionSheet[`F${rowNum}`].z = '#,##0.00';
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+      XLSX.utils.book_append_sheet(workbook, sessionSheet, 'Session Details');
+      XLSX.utils.book_append_sheet(workbook, profileSheet, 'Profile');
+
+      const wbout = XLSX.write(workbook, { type: 'binary', bookType: 'xlsx' });
+      const fileName = `Attenary-BossExport-${selectedMonth}-${selectedYear}.xlsx`;
+      const fs = FileSystem as any;
+      const destPath = fs.documentDirectory + fileName;
+      await fs.writeAsStringAsync(destPath, buf(wbout), { encoding: fs.EncodingType.Base64 });
+      setGeneratedExcelPath(destPath);
+      setSelectedExport('excel');
+      openSheet();
+    } catch (error) {
+      console.log('Excel generation error:', error);
+      Alert.alert(t('common.error'), t('bossExport.generateFailedExcel'));
+    } finally {
+      setGeneratingExcel(false);
+    }
+  };
+
   const handleShareOption = async (option: 'save' | 'whatsapp' | 'telegram' | 'gmail' | 'native') => {
-    if (!generatedFilePath) return;
-    setShowShareSheet(false);
+    const filePath = selectedExport === 'pdf' ? generatedFilePath : generatedExcelPath;
+    const fileName = `Attenary-BossExport-${selectedMonth}-${selectedYear}.${selectedExport === 'pdf' ? 'pdf' : 'xlsx'}`;
+    const saveKey = selectedExport === 'pdf' ? 'bossExport.savedPdf' : 'bossExport.savedExcel';
+    if (!filePath) { closeSheet(); return; }
+    closeSheet();
 
     try {
-      const fileName = `Attenary-BossExport-${selectedMonth}-${selectedYear}.pdf`;
-      const destPath = (FileSystem as any).documentDirectory + fileName;
-      await (FileSystem as any).copyAsync({ from: generatedFilePath, to: destPath });
+      const fs = FileSystem as any;
+      const destPath = fs.documentDirectory + fileName;
+      await fs.copyAsync({ from: filePath, to: destPath });
 
       if (Platform.OS === 'web') {
-        const url = URL.createObjectURL(new Blob([await (FileSystem as any).readAsStringAsync(generatedFilePath, { encoding: (FileSystem as any).EncodingType.Base64 })]));
+        const url = URL.createObjectURL(new Blob([await fs.readAsStringAsync(filePath, { encoding: fs.EncodingType.Base64 })]));
         const link = document.createElement('a');
         link.href = url;
         link.download = fileName;
@@ -253,14 +380,17 @@ const BossExportScreen = () => {
       }
 
       if (option === 'save') {
-        Alert.alert(t('common.success'), t('bossExport.saved'));
+        Alert.alert(t('common.success'), t(saveKey));
         return;
       }
 
       if (option === 'native') {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          await Sharing.shareAsync(destPath, { mimeType: 'application/pdf', dialogTitle: 'Share Boss Export' });
+          const mimeType = selectedExport === 'pdf'
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          await Sharing.shareAsync(destPath, { mimeType, dialogTitle: 'Share Boss Export' });
         } else {
           Alert.alert(t('bossExport.sharingNotAvailable'), t('bossExport.sharingNotAvailableDevice'));
         }
@@ -289,7 +419,10 @@ const BossExportScreen = () => {
       if (canOpen) {
         await Linking.openURL(appScheme);
       } else {
-        await Sharing.shareAsync(shareUrl, { mimeType: 'application/pdf', dialogTitle: 'Share Boss Export' });
+        const mimeType = selectedExport === 'pdf'
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        await Sharing.shareAsync(shareUrl, { mimeType, dialogTitle: 'Share Boss Export' });
       }
     } catch (error) {
       console.log('Share error:', error);
@@ -363,18 +496,25 @@ const BossExportScreen = () => {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.primaryButton} onPress={handleGeneratePdf} activeOpacity={0.8} disabled={generating}>
-          <FileIcon size={18} color={colors.bgMain} />
-          <Text style={styles.primaryButtonText}>{generating ? t('bossExport.generating') : t('bossExport.generate')}</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonsRow}>
+          <TouchableOpacity style={[styles.exportButton, styles.pdfButton]} onPress={handleGeneratePdf} activeOpacity={0.8} disabled={generating || generatingExcel}>
+            <Text style={styles.exportButtonText}>{generating ? t('bossExport.generating') : 'Generate PDF'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.exportButton, styles.excelButton]} onPress={handleGenerateExcel} activeOpacity={0.8} disabled={generating || generatingExcel}>
+            <Text style={styles.exportButtonText}>{generatingExcel ? t('bossExport.generating') : 'Generate Excel'}</Text>
+          </TouchableOpacity>
+        </View>
 
         {showShareSheet && (
-          <View style={styles.sheetOverlay}>
-            <TouchableOpacity style={styles.sheetBackdrop} activeOpacity={1} onPress={() => setShowShareSheet(false)} />
-            <View style={styles.sheetCard}>
+          <Animated.View style={[styles.sheetOverlay, { opacity: sheetOpacity }]}>
+            <TouchableOpacity style={styles.sheetBackdrop} activeOpacity={1} onPress={() => closeSheet()} />
+            <Animated.View style={[styles.sheetCardAnimated, { transform: [{ translateY: sheetTranslateY }] }]}>
               <View style={styles.dragHandle} />
               <Text style={styles.sheetTitle}>{t('bossExport.shareTitle')}</Text>
-              <Text style={styles.sheetSubtitle}>{t('bossExport.shareSubtitle')}</Text>
+              <Text style={styles.sheetSubtitle}>
+                {selectedExport === 'pdf' ? t('bossExport.shareSubtitlePdf') : t('bossExport.shareSubtitleExcel')}
+              </Text>
 
               <View style={styles.shareOptions}>
                 <TouchableOpacity style={styles.shareOption} onPress={() => handleShareOption('save')}>
@@ -412,8 +552,8 @@ const BossExportScreen = () => {
                   <Text style={styles.shareLabel}>{t('bossExport.moreOptions')}</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -444,18 +584,23 @@ const styles = StyleSheet.create({
   summaryItem: { flex: 1, alignItems: 'center' },
   summaryLabel: { fontSize: fonts.sizes.xs, fontWeight: fonts.weights.bold as any, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
   summaryValue: { fontSize: fonts.sizes.xxl, fontWeight: fonts.weights.bold as any, color: colors.textPrimary, fontFamily: 'monospace' },
-  primaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.primary, borderRadius: 18, paddingVertical: 16, marginTop: 4 },
-  primaryButtonText: { color: colors.bgMain, fontSize: fonts.sizes.md, fontWeight: fonts.weights.bold as any, letterSpacing: 0.2 },
+  buttonsRow: { flexDirection: 'row', gap: 12, marginTop: 4, marginBottom: 8 },
+  exportButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, borderRadius: 18, paddingVertical: 16, paddingHorizontal: 12, borderWidth: 1, ...shadows.card },
+  pdfButton: { backgroundColor: '#dc2626', borderColor: '#b91c1c' },
+  excelButton: { backgroundColor: '#16a34a', borderColor: '#15803d' },
+  iconBadge: { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)' },
+  iconEmoji: { fontSize: 20, color: '#fff' },
+  exportButtonText: { color: '#fff', fontSize: fonts.sizes.md, fontWeight: fonts.weights.bold as any, letterSpacing: 0.1 },
   sheetOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', zIndex: 50 },
   sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.72)' },
-  sheetCard: { backgroundColor: colors.bgMain, borderTopColor: colors.border, borderTopWidth: 1, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28 },
+  sheetCardAnimated: { backgroundColor: colors.bgMain, borderTopColor: colors.border, borderTopWidth: 1, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28 },
   dragHandle: { width: 44, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 18 },
   sheetTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.2, marginBottom: 4 },
   sheetSubtitle: { fontSize: 12, color: colors.textMuted, marginBottom: 18 },
-  shareOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'space-between' },
-  shareOption: { width: '30%', alignItems: 'center', gap: 8 },
-  shareIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  shareLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, textAlign: 'center' },
+  shareOptions: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 20, columnGap: 8, justifyContent: 'center' },
+  shareOption: { width: '33.333%', alignItems: 'center', gap: 6, paddingHorizontal: 4 },
+  shareIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  shareLabel: { fontSize: 10, fontWeight: '600', color: colors.textSecondary, textAlign: 'center' },
 });
 
 export default BossExportScreen;
