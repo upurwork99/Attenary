@@ -6,8 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Dimensions,
-  Pressable,
+  PanResponder,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { colors, fonts } from '../theme/colors';
@@ -33,111 +32,189 @@ const CustomBarChart = ({
   selectedMonth: string;
 }) => {
   const [tooltip, setTooltip] = useState<{ idx: number; x: number; y: number } | null>(null);
-  const chartWidth = Dimensions.get('window').width - 48;
+  const [chartWidth, setChartWidth] = useState(0);
   const chartHeight = 176;
-  const maxHours = 10;
-  const innerWidth = chartWidth;
-  const barSlotWidth = data.length > 0 ? innerWidth / data.length : innerWidth;
-  const barWidth = barSlotWidth * 0.65;
+  const xLabelHeight = 18;
+  const innerHeight = chartHeight - xLabelHeight;
+
+  const maxHoursRaw = useMemo(() => {
+    const peak = Math.max(...data.map((d) => d.hours));
+    if (peak <= 0.5) return 4;
+    const rounded = Math.ceil(peak);
+    const nice = Math.ceil(rounded / 4) * 4;
+    return Math.max(nice, 4);
+  }, [data]);
+
+  const barSlotWidth = chartWidth > 0 && data.length > 0 ? chartWidth / data.length : chartWidth;
+  const barWidth = Math.max(barSlotWidth * 0.65, 4);
   const barGap = (barSlotWidth - barWidth) / 2;
 
-  const onBarPress = (idx: number) => {
-    if (data[idx].hours <= 0) return;
-    const barH = Math.max((data[idx].hours / maxHours) * chartHeight, 2);
-    const y = chartHeight - barH;
-    const x = idx * barSlotWidth + barSlotWidth / 2;
-    setTooltip({ idx, x, y });
-  };
+  const yAxisStep = maxHoursRaw <= 4 ? 1 : 4;
+  const yAxisValues: number[] = [];
+  for (let v = 0; v <= maxHoursRaw; v += yAxisStep) yAxisValues.push(v);
+  if (yAxisValues[yAxisValues.length - 1] !== maxHoursRaw) yAxisValues.push(maxHoursRaw);
+
+  const xTickDays = useMemo(() => {
+    if (!data.length) return [] as number[];
+    const daysInMonth = data.length;
+    const ticks: number[] = [1];
+    if (daysInMonth > 1) {
+      ticks.push(5);
+      if (daysInMonth >= 10) ticks.push(10);
+      if (daysInMonth >= 15) ticks.push(15);
+      if (daysInMonth >= 20) ticks.push(20);
+      if (daysInMonth >= 25) ticks.push(25);
+    }
+    const last = daysInMonth;
+    if (!ticks.includes(last)) ticks.push(last);
+    return ticks;
+  }, [data]);
+
+  function resolveIdxFromX(locationX: number) {
+    if (!chartWidth || !data.length) return -1;
+    const idx = Math.floor(locationX / (chartWidth / data.length));
+    if (idx >= 0 && idx < data.length && data[idx].hours > 0) return idx;
+    return -1;
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const idx = resolveIdxFromX(evt.nativeEvent.locationX);
+        if (idx >= 0 && idx < data.length) {
+          const slotW = chartWidth / data.length;
+          const barH = Math.max((data[idx].hours / maxHoursRaw) * innerHeight, 2);
+          setTooltip({
+            idx,
+            x: Math.min(idx * slotW + slotW / 2, chartWidth - 40),
+            y: innerHeight - barH,
+          });
+        }
+      },
+      onPanResponderMove: (evt) => {
+        const idx = resolveIdxFromX(evt.nativeEvent.locationX);
+        if (idx >= 0 && idx < data.length) {
+          const slotW = chartWidth / data.length;
+          const barH = Math.max((data[idx].hours / maxHoursRaw) * innerHeight, 2);
+          setTooltip({
+            idx,
+            x: Math.min(idx * slotW + slotW / 2, chartWidth - 40),
+            y: innerHeight - barH,
+          });
+        } else {
+          setTooltip(null);
+        }
+      },
+      onPanResponderRelease: () => setTooltip(null),
+      onPanResponderTerminate: () => setTooltip(null),
+    })
+  ).current;
+
+  const getBarHighlight = (i: number) => tooltip?.idx === i;
+
+  if (!chartWidth) {
+    return (
+      <View
+        style={{ height: chartHeight + 10 }}
+        onLayout={(e) => setChartWidth(e.nativeEvent.layout.width)}
+      />
+    );
+  }
 
   return (
-    <View style={{ height: chartHeight + 20 }}>
-      <Svg width={chartWidth} height={chartHeight}>
-        <Defs>
-          <LinearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="rgba(168, 130, 255, 0.85)" />
-            <Stop offset="100%" stopColor="rgba(168, 130, 255, 0.01)" />
-          </LinearGradient>
-        </Defs>
-        {[0, 4, 8].map((val) => {
-          const y = chartHeight - (val / maxHours) * chartHeight;
-          return (
-            <React.Fragment key={val}>
-              <Line
-                x1={0}
-                y1={y}
-                x2={chartWidth}
-                y2={y}
-                stroke="#2a2a2a"
-                strokeWidth={1}
-                strokeDasharray="4 4"
+    <View style={{ height: chartHeight + 10 }}>
+      <View style={{ height: chartHeight }} {...panResponder.panHandlers}>
+        <Svg width={chartWidth} height={chartHeight} style={{ position: 'absolute', top: 0, left: 0 }}>
+          <Defs>
+            <LinearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0%" stopColor="rgba(168, 130, 255, 0.85)" />
+              <Stop offset="100%" stopColor="rgba(168, 130, 255, 0.01)" />
+            </LinearGradient>
+          </Defs>
+          {yAxisValues.map((val) => {
+            const y = innerHeight - (val / maxHoursRaw) * innerHeight;
+            return (
+              <React.Fragment key={val}>
+                <Line
+                  x1={0}
+                  y1={y}
+                  x2={chartWidth}
+                  y2={y}
+                  stroke="#2a2a2a"
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                />
+                <SvgText
+                  x={8}
+                  y={y + 3}
+                  fontSize={9}
+                  fontFamily="monospace"
+                  fill="#666666"
+                  textAnchor="start"
+                >
+                  {val}h
+                </SvgText>
+              </React.Fragment>
+            );
+          })}
+          {data.map((d, i) => {
+            const barH = Math.max((d.hours / maxHoursRaw) * innerHeight, 2);
+            const x = i * barSlotWidth + barGap;
+            const yPos = innerHeight - barH;
+            const highlight = getBarHighlight(i);
+            return (
+              <Rect
+                key={i}
+                x={x}
+                y={yPos}
+                width={barWidth}
+                height={barH}
+                rx={3}
+                ry={3}
+                fill={d.hours > 0 ? 'url(#barGrad)' : 'rgba(54, 54, 54, 0.4)'}
+                stroke={highlight ? 'rgba(255,255,255,0.9)' : d.hours > 0 ? 'rgba(168, 130, 255, 1)' : 'rgba(54, 54, 54, 0.6)'}
+                strokeWidth={highlight ? 2.5 : 1.5}
               />
+            );
+          })}
+          {data.map((d, i) => {
+            const showLabel = xTickDays.includes(d.day);
+            if (!showLabel || !d.label) return null;
+            const x = i * barSlotWidth + barSlotWidth / 2;
+            return (
               <SvgText
-                x={8}
-                y={y + 3}
+                key={`xl-${d.day}`}
+                x={x}
+                y={innerHeight + 12}
+                fill="#666666"
                 fontSize={9}
                 fontFamily="monospace"
-                fill="#666666"
-                textAnchor="start"
+                textAnchor="middle"
               >
-                {val}h
+                {d.label}
               </SvgText>
-            </React.Fragment>
-          );
-        })}
-        {data.map((d, i) => {
-          const barH = Math.max((d.hours / maxHours) * chartHeight, 2);
-          const x = i * barSlotWidth + barGap;
-          const yPos = chartHeight - barH;
-          return (
-            <Rect
-              key={i}
-              x={x}
-              y={yPos}
-              width={barWidth}
-              height={barH}
-              rx={3}
-              ry={3}
-              fill={d.hours > 0 ? 'url(#barGrad)' : 'rgba(54, 54, 54, 0.4)'}
-              stroke={d.hours > 0 ? 'rgba(168, 130, 255, 1)' : 'rgba(54, 54, 54, 0.6)'}
-              strokeWidth={1.5}
-              onPress={() => onBarPress(i)}
-            />
-          );
-        })}
-        {data.map((d, i) => {
-          if (!d.label) return null;
-          const x = i * barSlotWidth + barSlotWidth / 2;
-          return (
-            <SvgText
-              key={i}
-              x={x}
-              y={chartHeight + 12}
-              fill="#666666"
-              fontSize={9}
-              fontFamily="monospace"
-              textAnchor="middle"
-            >
-              {d.label}
-            </SvgText>
-          );
-        })}
-      </Svg>
-      {tooltip && (
-        <Pressable
-          style={[
-            styles.tooltip,
-            {
-              left: Math.min(tooltip.x - 36, chartWidth - 80),
-              top: tooltip.y - 32,
-            },
-          ]}
-          onPress={() => setTooltip(null)}
-        >
-          <Text style={styles.tooltipText}>
-            {selectedMonth} {data[tooltip.idx].day}: {data[tooltip.idx].hours.toFixed(1)}h
-          </Text>
-        </Pressable>
-      )}
+            );
+          })}
+        </Svg>
+        {tooltip && (
+          <View
+            style={[
+              styles.tooltip,
+              {
+                left: Math.max(4, Math.min(tooltip.x - 36, chartWidth - 76)),
+                top: Math.max(0, tooltip.y - 32),
+              },
+            ]}
+          >
+            <Text style={styles.tooltipText}>
+              {selectedMonth} {data[tooltip.idx].day}: {data[tooltip.idx].hours.toFixed(1)}h
+            </Text>
+          </View>
+        )}
+        <View pointerEvents="none" style={{ position: 'absolute', top: innerHeight, left: 0, width: chartWidth, height: xLabelHeight }} />
+      </View>
     </View>
   );
 };
@@ -594,6 +671,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 6,
+    marginTop: 20,
   },
   peakLabel: {
     fontSize: 10,
