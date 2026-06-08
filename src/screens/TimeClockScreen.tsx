@@ -5,18 +5,18 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   TextInput,
   StatusBar,
   Animated,
   Dimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { useSupabase } from '../context/SupabaseContext';
 import { useTabBarVisibility } from '../context/TabBarVisibilityContext';
-import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
+import { useConvexSync } from '../context/ConvexContext';
+import { colors, spacing, fonts } from '../theme/colors';
 import { getDateString } from '../utils/timeUtils';
-import Svg, { Path, Circle, Rect, Line, Polyline } from 'react-native-svg';
+import { getOrCreateDeviceId } from '../utils/deviceId';
+import Svg, { Line, Polyline, Rect } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -39,13 +39,18 @@ const CheckOutIcon = ({ color = colors.textFaint, size = 22 }: { color?: string;
 );
 
 const TimeClockScreen = () => {
-  const { appData, checkIn, checkOut, setEmployeeName } = useApp();
-  const { profile } = useSupabase();
+  const { appData, checkIn, checkOut } = useApp();
   const { t, isRTL, language } = useLanguage();
   const { setVisible } = useTabBarVisibility();
+  const { queueMutation } = useConvexSync();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentDate, setCurrentDate] = useState(new Date());
   const [employeeName, setEmployeeNameLocal] = useState('');
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getOrCreateDeviceId().then(setDeviceId);
+  }, []);
 
   // Bottom sheet state
   const [modalVisible, setModalVisible] = useState(false);
@@ -53,21 +58,12 @@ const TimeClockScreen = () => {
   const [customReason, setCustomReason] = useState('');
   const slideAnim = React.useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
-  // Sync employee name from Supabase profile (non-critical, silent)
   useEffect(() => {
-    const syncName = async () => {
-      const name = profile?.full_name?.trim();
-      if (!name) return;
-      const current = appData.employeeName?.trim();
-      if (name !== current) {
-        await setEmployeeName(name);
-        setEmployeeNameLocal(name);
-      } else {
-        setEmployeeNameLocal(current || '');
-      }
-    };
-    syncName();
-  }, [profile?.full_name, appData.employeeName, setEmployeeName]);
+    const name = appData.employeeName?.trim();
+    if (name) {
+      setEmployeeNameLocal(name);
+    }
+  }, [appData.employeeName]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -78,13 +74,6 @@ const TimeClockScreen = () => {
     const dateTimer = setInterval(() => setCurrentDate(new Date()), 60000);
     return () => clearInterval(dateTimer);
   }, []);
-
-  useEffect(() => {
-    const name = profile?.full_name?.trim();
-    if (name) {
-      setEmployeeNameLocal(name);
-    }
-  }, [profile?.full_name]);
 
   const activeSession = appData.sessions.find((s: any) => s.checkOutTime === null);
   const todaySessions = appData.sessions.filter((s: any) => getDateString(s.checkInTime) === getDateString(Date.now()));
@@ -132,10 +121,21 @@ const TimeClockScreen = () => {
         useNativeDriver: true,
       }).start();
     }
-  }, [modalVisible]);
+  }, [modalVisible, slideAnim]);
 
   const handleCheckIn = async () => {
     await checkIn();
+    if (!deviceId) return;
+    const newSession = appData.sessions.find((s: any) => s.checkOutTime === null);
+    if (!newSession) return;
+    await queueMutation('sessions', String(newSession.sessionId), 'upsert', {
+      user_id: deviceId,
+      check_in_time: newSession.checkInTime,
+      check_out_time: null,
+      reason: null,
+      reason_edited_at: null,
+      updated_at: Date.now(),
+    });
   };
 
   const handleCheckOutPress = () => {
@@ -148,7 +148,18 @@ const TimeClockScreen = () => {
 
   const finalizeCheckOut = async () => {
     const reason = selectedReason || customReason.trim() || undefined;
+    const sessionId = activeSession?.sessionId;
     await checkOut(reason);
+    if (deviceId && sessionId) {
+      await queueMutation('sessions', String(sessionId), 'upsert', {
+        user_id: deviceId,
+        check_in_time: activeSession?.checkInTime ?? Date.now(),
+        check_out_time: Date.now(),
+        reason: reason ?? null,
+        reason_edited_at: null,
+        updated_at: Date.now(),
+      });
+    }
     setModalVisible(false);
     setSelectedReason('');
     setCustomReason('');
@@ -156,7 +167,18 @@ const TimeClockScreen = () => {
   };
 
   const skipAndFinish = async () => {
+    const sessionId = activeSession?.sessionId;
     await checkOut('Skipped');
+    if (deviceId && sessionId) {
+      await queueMutation('sessions', String(sessionId), 'upsert', {
+        user_id: deviceId,
+        check_in_time: activeSession?.checkInTime ?? Date.now(),
+        check_out_time: Date.now(),
+        reason: 'Skipped',
+        reason_edited_at: null,
+        updated_at: Date.now(),
+      });
+    }
     setModalVisible(false);
     setSelectedReason('');
     setCustomReason('');

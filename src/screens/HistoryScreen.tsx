@@ -65,7 +65,7 @@ const HistoryScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { appData, loading } = useApp();
 
-  const safeSessions = appData?.sessions ?? [];
+  const safeSessions = useMemo(() => appData?.sessions ?? [], [appData.sessions]);
 
   const years = useMemo(() => {
     const uniqueYears = new Set<number>();

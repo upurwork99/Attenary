@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, Alert, StatusBar, Image, Platform, Animated, Dimensions, Easing } from 'react-native';
-import { useSupabase } from '../context/SupabaseContext';
+import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, StatusBar, Image, Animated, Dimensions, Easing } from 'react-native';
+import { useConvexSync } from '../context/ConvexContext';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import Svg, { Path } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { useTabBarVisibility } from '../context/TabBarVisibilityContext';
+import { getOrCreateDeviceId } from '../utils/deviceId';
 import * as ImagePicker from 'expo-image-picker';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -23,8 +24,7 @@ const DepartmentIcon = ({ size = 24 }: { size?: number }) => (
 );
 
 const ProfileAvatar = ({ size = 24 }: { size?: number }) => {
-  const { profile } = useSupabase();
-  const avatarUrl = profile?.avatar_url;
+  const avatarUrl = '';
   if (avatarUrl) {
     return <Image source={{ uri: avatarUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} resizeMode="cover" />;
   }
@@ -38,16 +38,22 @@ const EditIcon = ({ size = 16, color = colors.textPrimary }: { size?: number; co
 );
 
 const ProfileScreen = () => {
-  const { profile, updateProfile, uploadAvatar } = useSupabase();
+  const [profile, setProfile] = useState<any>(null);
+  const { queueMutation } = useConvexSync();
   const { t } = useLanguage();
   const { setVisible } = useTabBarVisibility();
   const [nameModalVisible, setNameModalVisible] = useState(false);
   const [jobTitleModalVisible, setJobTitleModalVisible] = useState(false);
   const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
-  const [employeeName, setEmployeeNameInput] = useState(profile?.full_name || '');
-  const [jobTitle, setJobTitleInput] = useState(profile?.job_title || '');
-  const [department, setDepartmentInput] = useState(profile?.department || '');
+  const [employeeName, setEmployeeNameInput] = useState('');
+  const [jobTitle, setJobTitleInput] = useState('');
+  const [department, setDepartmentInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getOrCreateDeviceId().then(setDeviceId);
+  }, []);
 
   const nameSlideAnim = useRef(new Animated.Value(1)).current;
   const jobSlideAnim = useRef(new Animated.Value(1)).current;
@@ -93,11 +99,16 @@ const ProfileScreen = () => {
 
   const saveField = async (field: 'full_name' | 'job_title' | 'department', value: string) => {
     setSaving(true);
-    const { error } = await updateProfile({ [field]: value });
-    setSaving(false);
-    if (error) {
-      Alert.alert('Error', 'Failed to save. Please try again.');
+    const updates = { [field]: value };
+    setProfile((prev: any) => ({ ...prev, ...updates, updated_at: Date.now() }));
+    if (deviceId) {
+      await queueMutation('profiles', deviceId, 'upsert', {
+        user_id: deviceId,
+        ...updates,
+        updated_at: Date.now(),
+      });
     }
+    setSaving(false);
   };
 
   const handlePickAvatar = async () => {
@@ -111,9 +122,14 @@ const ProfileScreen = () => {
     const asset = result.assets[0];
     setSaving(true);
 
-    await updateProfile({ avatar_url: asset.uri });
-    await uploadAvatar(asset.uri);
-
+    setProfile((prev: any) => ({ ...prev, avatar_url: asset.uri, updated_at: Date.now() }));
+    if (deviceId) {
+      await queueMutation('profiles', deviceId, 'upsert', {
+        user_id: deviceId,
+        avatar_url: asset.uri,
+        updated_at: Date.now(),
+      });
+    }
     setSaving(false);
   };
 

@@ -1,5 +1,3 @@
-import { Session, AppData } from '.';
-
 export const BACKUP_SCHEMA_VERSION = '1.0.0';
 export const BACKUP_STORAGE_KEY = 'ATTENARY_BACKUP_LATEST';
 

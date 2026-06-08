@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,8 +20,10 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import Svg, { Path } from 'react-native-svg';
-import { useSupabase } from '../context/SupabaseContext';
+import { useConvexSync } from '../context/ConvexContext';
 import { useLanguage } from '../context/LanguageContext';
+import { getOrCreateDeviceId } from '../utils/deviceId';
+import { openDb } from '../db/database';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -58,13 +60,18 @@ type FeedbackType = typeof feedbackTypes[number]['id'];
 const FeedbacksScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useLanguage();
-  const { profile, createFeedback } = useSupabase();
+  const { queueMutation } = useConvexSync();
   const [feedback, setFeedback] = useState('');
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [retryAttempts, setRetryAttempts] = useState(0);
   const [typeSheetVisible, setTypeSheetVisible] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
   const MAX_RETRY_ATTEMPTS = 3;
+
+  useEffect(() => {
+    getOrCreateDeviceId().then(setDeviceId);
+  }, []);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -104,11 +111,6 @@ const FeedbacksScreen = () => {
       return;
     }
 
-    if (!profile?.email) {
-      Alert.alert(t('common.error'), 'Please complete your profile with an email address before submitting feedback.');
-      return;
-    }
-
     if (isSubmitting) {
       return;
     }
@@ -116,19 +118,21 @@ const FeedbacksScreen = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await createFeedback({
-        type: feedbackType,
-        email: profile.email,
-        content: feedback.trim(),
-        metadata: {
-          userAgent: 'Attenary Mobile App',
-          referrer: 'React Native App',
-          screenResolution: `${Math.round(Dimensions.get('window').width)}x${Math.round(Dimensions.get('window').height)}`,
-        },
-      });
-
-      if (error) {
-        throw error;
+      if (deviceId) {
+      const database = await openDb() as any;
+      const result = await database.runAsync(
+        `INSERT INTO feedbacks (user_id, type, email, content, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [deviceId, feedbackType, null, feedback.trim(), null, Date.now()]
+      );
+      const localId = result as number;
+      await queueMutation('feedbacks', String(localId), 'upsert', {
+          user_id: deviceId,
+          type: feedbackType,
+          email: null,
+          content: feedback.trim(),
+          metadata: null,
+          created_at: Date.now(),
+        });
       }
 
       setRetryAttempts(0);
@@ -146,7 +150,7 @@ const FeedbacksScreen = () => {
           },
         ]
       );
-    } catch (error) {
+    } catch (_error) {
       const canRetry = retryAttempts < MAX_RETRY_ATTEMPTS;
       const remainingAttempts = MAX_RETRY_ATTEMPTS - retryAttempts;
 

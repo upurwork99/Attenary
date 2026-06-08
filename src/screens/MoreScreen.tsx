@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Platform, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
+import { colors, spacing, borderRadius, fonts } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
 import * as Sharing from 'expo-sharing';
 

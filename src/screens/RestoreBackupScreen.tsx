@@ -22,11 +22,6 @@ const WarningIcon = ({ size = 28 }: { size?: number }) => (
   <Image source={require('../../assets/icons/import.png')} style={{ width: size, height: size }} resizeMode="contain" />
 );
 
-const CheckIcon = ({ size = 16 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke={colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
 
 const PlusIcon = ({ size = 18 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -45,7 +40,6 @@ const RestoreBackupScreen = () => {
   const { t } = useLanguage();
   const { importBackupFromFile, previewImport, restoreBackup, loading } = useApp();
   const [isImporting, setIsImporting] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
   const [preview, setPreview] = useState<RestorePreview | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
@@ -57,12 +51,10 @@ const RestoreBackupScreen = () => {
     if (loading || isImporting) return;
 
     setIsImporting(true);
-    setValidationError(null);
 
     try {
       const backup = await importBackupFromFile();
       if (!backup) {
-        setValidationError('backup.noFileSelected');
         return;
       }
 
@@ -72,15 +64,13 @@ const RestoreBackupScreen = () => {
 
       const previewResult = await previewImport(backup);
       if (!previewResult.valid) {
-        setValidationError(previewResult.error || 'backup.invalidBackup');
         setSelectedBackup(null);
       } else {
         setPreview(previewResult);
         setShowPreviewModal(true);
       }
-    } catch (error) {
-      console.error('Import error:', error);
-      setValidationError('backup.importError');
+    } catch (_error) {
+      console.error('Import error:', _error);
     } finally {
       setIsImporting(false);
     }

@@ -1,4 +1,4 @@
-import ExpoLinking from 'expo-linking';
+import { canOpenURL, openURL } from 'expo-linking';
 
 export interface UpdateInfo {
   version: string;
@@ -68,10 +68,10 @@ const isNewVersionAvailable = (current: string, latest: string): boolean => {
 
 export const downloadAndInstallUpdate = async (downloadUrl: string): Promise<boolean> => {
   try {
-    const canOpen = await ExpoLinking.canOpenURL(downloadUrl);
+    const canOpen = await canOpenURL(downloadUrl);
     
     if (canOpen) {
-      await ExpoLinking.openURL(downloadUrl);
+      await openURL(downloadUrl);
       return true;
     }
     

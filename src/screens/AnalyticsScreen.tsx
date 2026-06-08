@@ -8,11 +8,10 @@ import {
   Dimensions,
   StatusBar,
   Modal,
-  Alert,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
-import { formatHoursMinutes, formatTime, getDateString } from '../utils/timeUtils';
+import { formatTime, getDateString } from '../utils/timeUtils';
 import Svg, { Polyline, Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
@@ -81,7 +80,6 @@ const AnalyticsScreen = () => {
   // Timeframe data
   const periodData = useMemo(() => {
     const now = new Date();
-    const dayMs = 86400000;
 
     if (selectedPeriod === 'week') {
       const startOfWeek = new Date(now);
@@ -288,34 +286,6 @@ const AnalyticsScreen = () => {
     const sum = ds.reduce((a: number, s: any) => a + getDuration(s), 0);
     return fmtFull(sum / ds.length);
   }, [recentSessions, selectedYear, selectedMonthIndex, selectedDay]);
-
-  const renderMonthGrid = (containerRef: React.MutableRefObject<any>) => {
-    if (!containerRef.current) return;
-    containerRef.current.removeAllComponents?.();
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    monthNames.forEach((m, idx) => {
-      const isSelected = idx === selectedMonthIndex;
-      containerRef.current?.addComponent
-        ? containerRef.current.addComponent(
-            <TouchableOpacity
-              key={idx}
-              style={[
-                styles.monthGridBtn,
-                isSelected ? { backgroundColor: colors.accent, borderColor: colors.accent } : { borderColor: colors.border },
-              ]}
-              onPress={() => {
-                setSelectedMonthIndex(idx);
-                containerRef.current?.updateContent('');
-              }}
-            >
-              <Text style={[styles.monthGridText, isSelected && { color: colors.white }]}>{m}</Text>
-            </TouchableOpacity>
-          )
-        : null;
-    });
-  };
-
-  const monthGridRef = useRef<any>(null);
 
   return (
     <View style={styles.container}>

@@ -64,21 +64,53 @@ const init = async (db: SQLite.SQLiteDatabase) => {
       created_at INTEGER,
       updated_at INTEGER
     );
-    CREATE TABLE IF NOT EXISTS sync_queue (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      entity_type TEXT NOT NULL,
-      entity_id TEXT,
-      operation TEXT NOT NULL,
-      payload TEXT NOT NULL,
-      file_path TEXT,
-      retry_count INTEGER DEFAULT 0,
-      last_error TEXT,
-      created_at INTEGER,
-      processed_at INTEGER
-    );
-    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-    CREATE INDEX IF NOT EXISTS idx_sync_queue_pending ON sync_queue(user_id, processed_at);
+  CREATE TABLE IF NOT EXISTS sync_queue (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT,
+    operation TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    file_path TEXT,
+    retry_count INTEGER DEFAULT 0,
+    last_error TEXT,
+    created_at INTEGER,
+    processed_at INTEGER
+  );
+  CREATE TABLE IF NOT EXISTS feedbacks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    email TEXT,
+    content TEXT NOT NULL,
+    metadata TEXT,
+    created_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS app_settings (
+    user_id TEXT PRIMARY KEY,
+    theme TEXT,
+    notifications INTEGER,
+    onboarding_completed INTEGER,
+    onboarding_progress REAL,
+    hour_rate REAL,
+    currency TEXT,
+    last_sync_token TEXT,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS backup_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS sync_watermark (
+    entity_type TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    last_synced_ts INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_sync_queue_pending ON sync_queue(user_id, processed_at);
   `);
   try {
     await db.runAsync(`ALTER TABLE sessions ADD COLUMN reason_edited_at INTEGER`);
@@ -106,6 +138,8 @@ export interface Database {
     clear: () => Promise<any>;
   };
 }
+
+export { dbPromise };
 
 export const openDb = async (): Promise<Database> => {
   const db = await dbPromise;

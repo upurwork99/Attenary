@@ -1,16 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useSupabase } from '../context/SupabaseContext';
-
 import TimeClockScreen from '../screens/TimeClockScreen';
 import DailyLogScreen from '../screens/DailyLogScreen';
 import MonthlyReportScreen from '../screens/MonthlyReportScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
-import ManageScreen from '../screens/ManageScreen';
+
 import ProfileScreen from '../screens/ProfileScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import MoreScreen from '../screens/MoreScreen';
@@ -28,6 +26,7 @@ import CheckOutModal from '../components/CheckOutModal';
 import CustomTabBar from '../components/CustomTabBar';
 import { TabBarVisibilityProvider } from '../context/TabBarVisibilityContext';
 import { checkForUpdate, UpdateInfo } from '../utils/updateService';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -68,14 +67,13 @@ type MainStackParamList = {
 };
 
 const Navigation = () => {
-  const { profile, loading } = useSupabase();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
 
-  const onboardingCompleted = !!profile?.onboarding_completed;
+  const onboardingCompleted = false;
 
   useEffect(() => {
-    if (!loading && !onboardingCompleted && Platform.OS !== 'web') {
+    if (!onboardingCompleted && Platform.OS !== 'web') {
       checkForUpdate()
         .then(update => {
           if (update) {
@@ -87,7 +85,7 @@ const Navigation = () => {
           console.log('Update check failed (non-critical):', error?.message || error);
         });
     }
-  }, [loading, onboardingCompleted]);
+  }, [onboardingCompleted]);
 
   const initialRoute = onboardingCompleted ? 'Main' : 'Onboarding';
 
