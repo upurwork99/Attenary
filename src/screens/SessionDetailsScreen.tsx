@@ -47,8 +47,6 @@ const C = {
 // responsive breakpoints
 // ─────────────────────────────────────────────────
 const { width: W0, height: H0 } = Dimensions.get('window');
-const IS_TABLET = W0 >= 768;
-const IS_LANDSCAPE = W0 > H0;
 
 // ─────────────────────────────────────────────────
 // SVG icons (match HistoryScreen stroke style)
@@ -56,12 +54,6 @@ const IS_LANDSCAPE = W0 > H0;
 const BackIcon = ({ size = 22, color = C.main }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M15 19l-7-7 7-7" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
-const ChevronIcon = ({ size = 20, color = C.muted }: { size?: number; color?: string }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" stroke={color} strokeWidth="2.5" />
   </Svg>
 );
 
@@ -215,14 +207,14 @@ const SessionDetailsScreen: React.FC<SessionDetailsScreenProps> = ({ route }) =>
     if (!open) return;
     Animated.parallel([
       Animated.timing(slide, { toValue: 0, duration: 340, useNativeDriver: true }),
-      Animated.timing(fade, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.timing(fade,  { toValue: 1, duration: 280, useNativeDriver: true }),
     ]).start();
-  }, [open]);
+  }, [open, slide, fade]);
 
   // keep editedAt in sync with the live session from context
   useEffect(() => {
     setEditedAt(((session as any).reasonEditedAt ?? null));
-  }, [session?.reasonEditedAt]);
+  }, [session]);
 
   const show = () => {
     if (editedAt !== null || isActive) return;
@@ -384,7 +376,7 @@ const SessionDetailsScreen: React.FC<SessionDetailsScreenProps> = ({ route }) =>
             </View>
             <View style={{ backgroundColor: C.alt, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.border, marginBottom: 16 }}>
               {session.reason ? (
-                <Text style={{ fontSize: 15 * fontSizeScale, color: C.main, lineHeight: 24, fontStyle: 'italic' }}>"{session.reason}"</Text>
+                <Text style={{ fontSize: 15 * fontSizeScale, color: C.main, lineHeight: 24, fontStyle: 'italic' }}>&quot;{session.reason}&quot;</Text>
               ) : (
                 <>
                   <Text style={[S.bold, { textAlign: 'center', marginBottom: 4, fontSize: 14 * fontSizeScale, color: C.white }]}>

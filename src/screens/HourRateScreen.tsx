@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Modal,
 import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
-import { colors, borderRadius, fonts, shadows } from '../theme/colors';
+import { colors, borderRadius, fonts, shadows, spacing } from '../theme/colors';
 import Svg, { Path } from 'react-native-svg';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -49,7 +49,7 @@ function getCurrencySymbol(currencyCode) {
       })
       .replace(/\d/g, '')
       .trim();
-  } catch (e) {
+  } catch {
     return '';
   }
 }
@@ -130,6 +130,7 @@ const HourRateScreen = () => {
   const navigation = useNavigation<any>();
   const { appData, setHourRate } = useApp();
   const { t } = useLanguage();
+
   const sessions = appData.sessions ?? [];
 
   const now = new Date();

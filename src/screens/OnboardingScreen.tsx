@@ -16,10 +16,11 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { useSupabase } from '../context/SupabaseContext';
+import { useConvexSync } from '../context/ConvexContext';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, fonts } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
+import { getOrCreateDeviceId } from '../utils/deviceId';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
 
@@ -52,6 +53,7 @@ const OnboardingScreen = () => {
   const [selectedLanguage, setSelectedLanguage] = useState(useLanguage().language);
   const [inputError, setInputError] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const { width, height } = useWindowDimensions();
@@ -68,9 +70,14 @@ const OnboardingScreen = () => {
   const styles = makeStyles({ illustrationSize, avatarSize, paddingHorizontalResponsive, isTabletLandscape, isLandscape, isSmallDevice, titleSizeResponsive, subtitleSizeResponsive });
 
   const navigation: any = useNavigation();
-  const { profile, updateProfile, uploadAvatar, loading: supabaseLoading, completeOnboarding } = useSupabase();
+  const [profile, setProfile] = useState<any>(null);
+  const { queueMutation } = useConvexSync();
   const { setEmployeeName, setJobTitle, setDepartment } = useApp();
-  const { setLanguage, t } = useLanguage();
+  const { setLanguage } = useLanguage();
+
+  useEffect(() => {
+    getOrCreateDeviceId().then(setDeviceId);
+  }, []);
 
   const generateGuestId = () => 'guest-user-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
 
@@ -78,7 +85,7 @@ const OnboardingScreen = () => {
     if (profile?.onboarding_completed) {
       navigation.replace('Main');
     }
-  }, [profile?.onboarding_completed]);
+  }, [profile?.onboarding_completed, navigation]);
 
   const onboardingSteps: OnboardingStep[] = [
     {
@@ -223,18 +230,18 @@ const validateCurrentStep = (): boolean => {
     switch (field) {
       case 'employeeName':
         await setEmployeeName(normalized);
-        await updateProfile({ full_name: normalized });
+        setProfile((prev: any) => ({ ...prev, full_name: normalized, updated_at: Date.now() }));
         break;
       case 'jobTitle':
         await setJobTitle(normalized);
-        await updateProfile({ job_title: normalized });
+        setProfile((prev: any) => ({ ...prev, job_title: normalized, updated_at: Date.now() }));
         break;
       case 'department':
         await setDepartment(normalized);
-        await updateProfile({ department: normalized });
+        setProfile((prev: any) => ({ ...prev, department: normalized, updated_at: Date.now() }));
         break;
       case 'email':
-        await updateProfile({ email: normalized });
+        setProfile((prev: any) => ({ ...prev, email: normalized, updated_at: Date.now() }));
         break;
     }
   };
@@ -254,7 +261,7 @@ const validateCurrentStep = (): boolean => {
     
     // Store the local URI directly - it will show in the app
     console.log('OnboardingScreen: Setting avatar from', asset.uri);
-    await updateProfile({ avatar_url: asset.uri });
+    setProfile((prev: any) => ({ ...prev, avatar_url: asset.uri, updated_at: Date.now() }));
     
     console.log('OnboardingScreen: Avatar updated successfully');
     setUploadingAvatar(false);
@@ -300,7 +307,7 @@ const validateCurrentStep = (): boolean => {
         return;
       }
 
-      const result = await completeOnboarding({
+      const onboardingPayload = {
         id: profile?.id || generateGuestId(),
         email: inputValues.email,
         full_name: inputValues.employeeName,
@@ -308,13 +315,17 @@ const validateCurrentStep = (): boolean => {
         department: inputValues.department,
         avatar_url: avatarUrl,
         language: selectedLanguage,
-      });
+      };
 
-      if (result.success) {
-        navigation.replace('Main');
-      } else {
-        Alert.alert('Error', result.error || 'Failed to save profile');
+      setProfile((prev: any) => ({ ...prev, ...onboardingPayload, onboarding_completed: true, updated_at: Date.now() }));
+      if (deviceId) {
+        await queueMutation('profiles', deviceId, 'upsert', {
+          user_id: deviceId,
+          ...onboardingPayload,
+          updated_at: Date.now(),
+        });
       }
+      navigation.replace('Main');
     }
   };
 
@@ -346,7 +357,7 @@ const validateCurrentStep = (): boolean => {
 
   useEffect(() => {
     progressAnim.setValue((currentIndex + 1) / totalSteps);
-  }, []);
+  }, [currentIndex, progressAnim, totalSteps]);
 
   const renderInputField = () => {
     if (currentStep.type !== 'input' || !currentStep.inputConfig) return null;

@@ -9,7 +9,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { useTabBarVisibility } from '../context/TabBarVisibilityContext';
 import { useLanguage } from '../context/LanguageContext';
-import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
+import { colors, spacing, borderRadius, fonts } from '../theme/colors';
 
 const HeaderIcon = ({ size = 28 }: { size?: number }) => (
   <Image source={require('../../assets/icons/profile.png')} style={{ width: size, height: size }} resizeMode="contain" />

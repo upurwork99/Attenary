@@ -41,9 +41,9 @@ export interface Profile {
 export interface SyncQueueItem {
   id?: string;
   user_id: string;
-  entity_type: 'session' | 'profile' | 'avatar';
+  entity_type: string;
   entity_id: string;
-  operation: 'upsert' | 'delete' | 'upload';
+  operation: 'upsert' | 'delete';
   payload: any;
   file_path?: string;
   retry_count: number;

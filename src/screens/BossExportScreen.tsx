@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useSupabase } from '../context/SupabaseContext';
 import { colors, borderRadius, fonts, shadows } from '../theme/colors';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
@@ -87,7 +86,6 @@ const ShareIcon = ({ size = 20, color = colors.textSecondary }: { size?: number;
 const BossExportScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { appData } = useApp();
-  const { profile } = useSupabase();
   const { t } = useLanguage();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth()]);
@@ -154,8 +152,8 @@ const BossExportScreen = () => {
   }, [appData.sessions, selectedYear, selectedMonth]);
 
   const buildPdfHtml = () => {
-    const employeeName = appData.employeeName || profile?.full_name || 'Employee';
-    const email = profile?.email || appData.email || '';
+    const employeeName = appData.employeeName || 'Employee';
+    const email = appData.email || '';
     const exportDate = new Date().toLocaleString();
 
     const filtered = getFilteredSessions(appData.sessions, selectedYear, selectedMonth);

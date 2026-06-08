@@ -51,7 +51,7 @@ export function createBackup(appData: AppData): BackupSchema {
     hourRate: appData.hourRate,
   };
 
-  const dataString = JSON.stringify(data);
+  const _dataString = JSON.stringify(data);
   
   return {
     header: {
@@ -299,7 +299,7 @@ export async function performRestore(
   };
 }
 
-function logImportEvent(backup: BackupSchema, result: RestoreResult): void {
+function _logImportEvent(backup: BackupSchema, result: RestoreResult): void {
   const logEntry = {
     date: new Date().toISOString(),
     fileName: backup.header.appVersion,
