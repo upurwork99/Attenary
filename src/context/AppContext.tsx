@@ -17,6 +17,7 @@ interface AppContextType {
   setJobTitle: (jobTitle: string) => Promise<void>;
   setDepartment: (department: string) => Promise<void>;
   setHourRate: (rate: number) => Promise<void>;
+  setAvatarUrl: (url: string) => Promise<void>;
   addSessions: (sessions: Session[]) => Promise<boolean>;
   completeOnboarding: () => Promise<void>;
   updateOnboardingProgress: (step: number) => Promise<void>;
@@ -53,6 +54,7 @@ export const Provider = ({ children }: AppProviderProps) => {
     email: '',
     jobTitle: '',
     department: '',
+    avatarUrl: '',
     onboardingCompleted: false,
     onboardingProgress: {
       currentStep: 0,
@@ -110,6 +112,7 @@ export const Provider = ({ children }: AppProviderProps) => {
             email: parsed.email || '',
             jobTitle: parsed.jobTitle || '',
             department: parsed.department || '',
+            avatarUrl: parsed.avatarUrl || '',
             onboardingCompleted: parsed.onboardingCompleted || false,
             onboardingProgress: parsed.onboardingProgress || { currentStep: 0, completedSteps: [], lastVisited: Date.now() },
             appSettings: parsed.appSettings || { theme: 'dark', notifications: true },
@@ -163,6 +166,11 @@ export const Provider = ({ children }: AppProviderProps) => {
 
   const setDepartment = async (department: string) => {
     setAppData((prev) => ({ ...prev, department }));
+    await saveData();
+  };
+
+  const setAvatarUrl = async (url: string) => {
+    setAppData((prev) => ({ ...prev, avatarUrl: url }));
     await saveData();
   };
 
@@ -313,6 +321,7 @@ export const Provider = ({ children }: AppProviderProps) => {
           email: false,
           jobTitle: false,
           department: false,
+          hourRate: false,
           onboardingProgress: false,
           appSettings: false,
         },
@@ -343,6 +352,7 @@ export const Provider = ({ children }: AppProviderProps) => {
           email: false,
           jobTitle: false,
           department: false,
+          hourRate: false,
           onboardingProgress: false,
           appSettings: false,
         },
@@ -389,6 +399,7 @@ export const Provider = ({ children }: AppProviderProps) => {
           email: false,
           jobTitle: false,
           department: false,
+          hourRate: false,
           onboardingProgress: false,
           appSettings: false,
         },
@@ -408,6 +419,7 @@ export const Provider = ({ children }: AppProviderProps) => {
         email: backup.data.email || prev.email,
         jobTitle: backup.data.jobTitle || prev.jobTitle,
         department: backup.data.department || prev.department,
+        hourRate: backup.data.hourRate ?? prev.hourRate,
         onboardingCompleted: backup.data.onboardingCompleted ?? prev.onboardingCompleted,
         onboardingProgress: backup.data.onboardingProgress || prev.onboardingProgress,
         appSettings: backup.data.appSettings || prev.appSettings,
@@ -416,50 +428,52 @@ export const Provider = ({ children }: AppProviderProps) => {
       const saved = await saveData();
       if (!saved) throw new Error('Failed to save restored data');
 
-      return {
-        valid: true,
-        schemaVersion: backup.header.schemaVersion,
-        appVersion: backup.header.appVersion,
-        recordCounts: {
-          sessions: { new: importedSessions, duplicate: skippedSessions, conflicting: 0 },
-          employeeName: !!backup.data.employeeName,
-          email: !!backup.data.email,
-          jobTitle: !!backup.data.jobTitle,
-          department: !!backup.data.department,
-          onboardingProgress: !!backup.data.onboardingProgress,
-          appSettings: !!backup.data.appSettings,
-        },
-        totalNewRecords: importedSessions,
-        totalDuplicate: skippedSessions,
-        totalConflicting: 0,
-      };
+    return {
+      valid: true,
+      schemaVersion: backup.header.schemaVersion,
+      appVersion: backup.header.appVersion,
+      recordCounts: {
+        sessions: { new: importedSessions, duplicate: skippedSessions, conflicting: 0 },
+        employeeName: !!backup.data.employeeName,
+        email: !!backup.data.email,
+        jobTitle: !!backup.data.jobTitle,
+        department: !!backup.data.department,
+        hourRate: backup.data.hourRate > 0,
+        onboardingProgress: !!backup.data.onboardingProgress,
+        appSettings: !!backup.data.appSettings,
+      },
+      totalNewRecords: importedSessions,
+      totalDuplicate: skippedSessions,
+      totalConflicting: 0,
+    };
     } catch (error) {
       setAppData(previousData);
-      return {
-        valid: false,
-        schemaVersion: backup.header.schemaVersion,
-        appVersion: backup.header.appVersion,
-        recordCounts: {
-          sessions: { new: 0, duplicate: 0, conflicting: 0 },
-          employeeName: false,
-          email: false,
-          jobTitle: false,
-          department: false,
-          onboardingProgress: false,
-          appSettings: false,
-        },
-        totalNewRecords: 0,
-        totalDuplicate: 0,
-        totalConflicting: 0,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+    return {
+      valid: false,
+      schemaVersion: backup?.header?.schemaVersion || 'unknown',
+      appVersion: backup?.header?.appVersion || 'unknown',
+      recordCounts: {
+        sessions: { new: 0, duplicate: 0, conflicting: 0 },
+        employeeName: false,
+        email: false,
+        jobTitle: false,
+        department: false,
+        hourRate: false,
+        onboardingProgress: false,
+        appSettings: false,
+      },
+      totalNewRecords: 0,
+      totalDuplicate: 0,
+      totalConflicting: 0,
+      error: validation.error,
+    };
     }
   };
 
   const value = {
     appData, loading, storageError,
     saveData, loadData, checkIn, checkOut,
-    setEmployeeName, setEmail, setJobTitle, setDepartment, setHourRate,
+    setEmployeeName, setEmail, setJobTitle, setDepartment, setHourRate, setAvatarUrl,
     addSessions, completeOnboarding, updateOnboardingProgress, resetOnboardingProgress,
     clearStorageError, deleteSession, updateSessionReason,
     createBackup, saveBackup, getStoredBackup,
