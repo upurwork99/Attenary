@@ -47,7 +47,7 @@ const ICONS: Record<string, React.ComponentType<any>> = {
 };
 
 // ─── Easing equivalent to cubic-bezier(0.25, 1, 0.5, 1) ─────────────────────
-FLUID_SPRING = {
+const FLUID_SPRING = {
   useNativeDriver: false,
   tension: 120,
   friction: 14,
