@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { Profile, Session, SyncQueueItem } from '../types';
+import { Profile, Session, SyncQueueItem, Feedback } from '../types';
 
 const dbPromise = SQLite.openDatabaseAsync('attenary.db');
 
@@ -38,6 +38,16 @@ const rowToSync = (row: any): SyncQueueItem => ({
   last_error: row.last_error ?? '',
   created_at: row.created_at,
   processed_at: row.processed_at,
+});
+
+const rowToFeedback = (row: any): Feedback => ({
+  id: String(row.id),
+  user_id: row.user_id,
+  type: row.type,
+  email: row.email ?? undefined,
+  content: row.content,
+  metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+  created_at: row.created_at,
 });
 
 const init = async (db: SQLite.SQLiteDatabase) => {
@@ -156,6 +166,11 @@ export interface Database {
     put: (session: Session) => Promise<void>;
     clear: () => Promise<any>;
   };
+  feedbacks: {
+    getAll: (userId: string) => Promise<Feedback[]>;
+    put: (feedback: Feedback) => Promise<void>;
+    clear: () => Promise<any>;
+  };
   syncQueue: {
     insert: (item: Omit<SyncQueueItem, 'id'>) => Promise<any>;
     pending: () => Promise<SyncQueueItem[]>;
@@ -232,6 +247,30 @@ export const openDb = async (): Promise<Database> => {
         );
       },
       clear: async () => db.runAsync('DELETE FROM sessions'),
+    },
+    feedbacks: {
+      getAll: async (userId: string) => {
+        const rows = await db.getAllAsync<any>(
+          'SELECT * FROM feedbacks WHERE user_id = ? ORDER BY created_at DESC',
+          [userId]
+        );
+        return rows.map(rowToFeedback);
+      },
+      put: async (feedback: Feedback) => {
+        await db.runAsync(
+          `INSERT INTO feedbacks (user_id, type, email, content, metadata, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            feedback.user_id,
+            feedback.type,
+            feedback.email ?? null,
+            feedback.content,
+            feedback.metadata ? JSON.stringify(feedback.metadata) : null,
+            feedback.created_at ?? Date.now(),
+          ]
+        );
+      },
+      clear: async () => db.runAsync('DELETE FROM feedbacks'),
     },
     syncQueue: {
       insert: async (item: Omit<SyncQueueItem, 'id'>) => {

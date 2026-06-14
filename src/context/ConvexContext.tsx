@@ -164,7 +164,7 @@ export function ConvexProvider({ children }: { children: React.ReactNode }) {
                 type: payload.type,
                 email: payload.email ?? null,
                 content: payload.content,
-                metadata: payload.metadata ?? null,
+                metadata: typeof payload.metadata === 'string' ? payload.metadata : (payload.metadata ? JSON.stringify(payload.metadata) : null),
                 created_at: payload.created_at ?? Date.now(),
               });
             } else if (entityType === 'app_settings') {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useConvexSync } from '../context/ConvexContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getOrCreateDeviceId } from '../utils/deviceId';
+import { useApp } from '../context/AppContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -60,6 +61,7 @@ const FeedbacksScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useLanguage();
   const { queueMutation } = useConvexSync();
+  const { appData } = useApp();
   const [feedback, setFeedback] = useState('');
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,9 +135,13 @@ const FeedbacksScreen = () => {
         await queueMutation('feedbacks', deviceId, 'upsert', {
           user_id: deviceId,
           type: feedbackType,
-          email: null,
+          email: appData.email || null,
           content: feedback.trim(),
-          metadata: null,
+          metadata: JSON.stringify({
+            app_version: '3.23.7',
+            platform: Platform.OS,
+            device_id: deviceId,
+          }),
           created_at: Date.now(),
         });
       }
@@ -143,7 +149,7 @@ const FeedbacksScreen = () => {
       setRetryAttempts(0);
       setSubmitted(true);
       setFeedback('');
-    } catch (_error) {
+    } catch {
       const canRetry = retryAttempts < MAX_RETRY_ATTEMPTS;
       const remainingAttempts = MAX_RETRY_ATTEMPTS - retryAttempts;
 
