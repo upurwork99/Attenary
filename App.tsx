@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -10,6 +10,9 @@ import { ThemeProvider } from './src/theme/ThemeContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { colors } from './src/theme/colors';
 import Svg, { Path, Polygon, Line, Circle } from 'react-native-svg';
+import { checkForUpdate, downloadAndInstallUpdate, UpdateInfo } from './src/utils/updateService';
+import { UpdateBottomSheet } from './src/components/UpdateBottomSheet';
+import { shouldShowUpdate, setDismissedAt } from './src/utils/updateStorage';
 
 // Global error handlers to prevent Android crashes
 if (Platform.OS !== 'web') {
@@ -160,6 +163,55 @@ const ContextErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ childre
 
 export default function App() {
   const Container = Platform.OS === 'web' ? View : GestureHandlerRootView;
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const runCheck = async () => {
+      try {
+        const info = await checkForUpdate();
+        console.log('[App] checkForUpdate result:', info ? `v${info.version}` : 'null');
+
+        if (!info) return;
+
+        console.log('[App] calling shouldShowUpdate for version:', info.version);
+        const show = await shouldShowUpdate(info.version);
+        console.log('[App] shouldShowUpdate:', show);
+
+        if (!cancelled && show) {
+          console.log('[App] showing update sheet');
+          setUpdateInfo(info);
+          setSheetVisible(true);
+        } else {
+          console.log('[App] update suppressed by shouldShowUpdate');
+        }
+      } catch (err) {
+        console.warn('[App] update check failed:', err);
+      }
+    };
+
+    const timer = setTimeout(runCheck, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  const handleUpdateNow = async () => {
+    setSheetVisible(false);
+    if (updateInfo) {
+      await downloadAndInstallUpdate(updateInfo.downloadUrl);
+    }
+  };
+
+  const handleRemindLater = async () => {
+    if (updateInfo) {
+      await setDismissedAt(updateInfo.version);
+    }
+    setSheetVisible(false);
+  };
 
   try {
     return (
@@ -184,6 +236,15 @@ export default function App() {
             </ContextErrorBoundary>
           </SafeAreaProvider>
         </Container>
+        {updateInfo && (
+          <UpdateBottomSheet
+            visible={sheetVisible}
+            updateInfo={updateInfo}
+            onUpdateNow={handleUpdateNow}
+            onRemindLater={handleRemindLater}
+            isMandatory={updateInfo.mandatory}
+          />
+        )}
       </ErrorBoundary>
     );
   } catch (error) {

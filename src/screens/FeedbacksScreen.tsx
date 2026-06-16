@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay,
   },
   sheetContent: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: '#000000',
     borderTopLeftRadius: borderRadius.xxl,
     borderTopRightRadius: borderRadius.xxl,
     padding: spacing.xxl,

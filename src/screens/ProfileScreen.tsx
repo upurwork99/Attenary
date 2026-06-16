@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
   sheetOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 },
   sheetBackdrop: { flex: 1 },
-  sheetContent: { backgroundColor: colors.bgCard, borderTopLeftRadius: borderRadius.xxl, borderTopRightRadius: borderRadius.xxl, padding: spacing.xxl, paddingBottom: spacing.xxxl, borderWidth: 1, borderColor: colors.border, ...shadows.glassElevated },
+  sheetContent: { backgroundColor: '#000000', borderTopLeftRadius: borderRadius.xxl, borderTopRightRadius: borderRadius.xxl, padding: spacing.xxl, paddingBottom: spacing.xxxl, borderWidth: 1, borderColor: colors.border, ...shadows.glassElevated },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.lg },
   sheetTitle: { fontSize: fonts.sizes.xxl, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm, textAlign: 'center' },
   sheetSubtitle: { fontSize: fonts.sizes.sm, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl },

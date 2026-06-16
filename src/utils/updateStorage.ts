@@ -37,22 +37,33 @@ export const shouldShowUpdate = async (currentVersion: string): Promise<boolean>
     const dismissedAt = await getDismissedAt();
     const dismissedVersion = await getDismissedVersion();
 
+    console.log('[updateStorage] dismissedAt:', dismissedAt, '| dismissedVersion:', dismissedVersion, '| cooldownMs:', COOLDOWN_MS);
+
     if (dismissedVersion && dismissedVersion !== currentVersion) {
+      console.log('[updateStorage] dismissedVersion !== currentVersion → show');
       return true;
     }
 
-    if (!dismissedAt) return true;
+    if (!dismissedAt) {
+      console.log('[updateStorage] no previous dismissal → show');
+      return true;
+    }
 
-    return Date.now() - dismissedAt >= COOLDOWN_MS;
-  } catch {
+    const elapsed = Date.now() - dismissedAt;
+    const show = elapsed >= COOLDOWN_MS;
+    console.log(`[updateStorage] cooldown elapsed: ${elapsed}ms / ${COOLDOWN_MS}ms → ${show}`);
+    return show;
+  } catch (err) {
+    console.warn('[updateStorage] error, failing open:', err);
     return true;
   }
 };
 
 export const resetDismissed = async (): Promise<void> => {
   try {
+    console.log('[updateStorage] resetDismissed called');
     await AsyncStorage.multiRemove([DISMISSED_AT_KEY, DISMISSED_VERSION_KEY]);
-  } catch {
-    // non-critical
+  } catch (err) {
+    console.warn('[updateStorage] reset failed:', err);
   }
 };
