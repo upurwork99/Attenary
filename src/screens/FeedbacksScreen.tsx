@@ -324,9 +324,9 @@ const FeedbacksScreen = () => {
             ]}
           >
             <View style={styles.sheetHandle} />
-        <View style={styles.successIconPlaceholder}>
-          <CheckIcon size={48} color={colors.success} />
-        </View>
+            <View style={styles.successImageWrap}>
+              <Image source={require('../../assets/success.png')} style={styles.successImage} resizeMode="contain" />
+            </View>
             <Text style={styles.successHello}>{t('feedbacks.thankYou')}</Text>
             <Text style={styles.successBody}>{t('feedbacks.feedbackSuccess')}</Text>
           </Animated.View>
@@ -578,21 +578,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl + spacing.lg,
     alignItems: 'center',
   },
-  successImage: {
+  successImageWrap: {
     width: 140,
     height: 140,
     marginBottom: spacing.lg,
   },
-  successIconPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.bgSecondary,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
+  successImage: {
+    width: 140,
+    height: 140,
   },
   successHello: {
     fontSize: fonts.sizes.xxl,
