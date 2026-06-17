@@ -41,21 +41,6 @@ interface OnboardingStep {
 }
 
 const OnboardingScreen = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [fadeAnim] = useState(new Animated.Value(1));
-  const [progressAnim] = useState(new Animated.Value(0));
-  const [inputValues, setInputValues] = useState({
-    employeeName: '',
-    jobTitle: '',
-    department: '',
-    email: '',
-  });
-  const [selectedLanguage, setSelectedLanguage] = useState(useLanguage().language);
-  const [inputError, setInputError] = useState('');
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [deviceId, setDeviceId] = useState<string | null>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
-
   const { width, height } = useWindowDimensions();
   const isSmallDevice = width <= 360;
   const isLandscape = width > height;
@@ -66,26 +51,38 @@ const OnboardingScreen = () => {
   const paddingHorizontalResponsive = isSmallDevice ? spacing.md : spacing.xl;
   const titleSizeResponsive = isSmallDevice ? fonts.sizes.xxl : fonts.sizes.hero;
   const subtitleSizeResponsive = isSmallDevice ? fonts.sizes.lg : fonts.sizes.xl;
-
   const styles = makeStyles({ illustrationSize, avatarSize, paddingHorizontalResponsive, isTabletLandscape, isLandscape, isSmallDevice, titleSizeResponsive, subtitleSizeResponsive });
 
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [fadeAnim] = useState(new Animated.Value(1));
+  const [inputValues, setInputValues] = useState({
+    employeeName: '',
+    jobTitle: '',
+    department: '',
+    email: '',
+  });
+  const { language, setLanguage } = useLanguage();
+  const [selectedLanguage, setSelectedLanguage] = useState(language);
+  const [inputError, setInputError] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const navigation: any = useNavigation();
   const [profile, setProfile] = useState<any>(null);
   const { queueMutation } = useConvexSync();
   const { setEmployeeName, setEmail, setJobTitle, setDepartment, setAvatarUrl, completeOnboarding } = useApp();
-  const { setLanguage } = useLanguage();
 
   useEffect(() => {
     getOrCreateDeviceId().then(setDeviceId);
   }, []);
-
-  const generateGuestId = () => 'guest-user-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
 
   useEffect(() => {
     if (profile?.onboarding_completed) {
       navigation.replace('Main');
     }
   }, [profile?.onboarding_completed, navigation]);
+
+  const generateGuestId = () => 'guest-user-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
 
   const onboardingSteps: OnboardingStep[] = [
     {
@@ -185,45 +182,45 @@ const OnboardingScreen = () => {
     },
   ];
 
-  const currentStep = onboardingSteps[currentIndex];
   const totalSteps = onboardingSteps.length;
+  const currentStep = onboardingSteps[currentIndex];
+  const dotAnims = useRef(onboardingSteps.map((_: any, i: number) => new Animated.Value(i === 0 ? 1.2 : 1))).current;
 
-const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-const validateCurrentStep = (): boolean => {
-  if (currentStep.type === 'input' && currentStep.inputConfig) {
-    const field = currentStep.inputConfig.field;
-    const value = inputValues[field];
+  const validateCurrentStep = (): boolean => {
+    if (currentStep.type === 'input' && currentStep.inputConfig) {
+      const field = currentStep.inputConfig.field;
+      const value = inputValues[field];
 
-    if (field === 'email') {
-      if (!value.trim()) {
-        setInputError('Email is required');
-        return false;
+      if (field === 'email') {
+        if (!value.trim()) {
+          setInputError('Email is required');
+          return false;
+        }
+        if (!isValidEmail(value)) {
+          setInputError('Please enter a valid email address');
+          return false;
+        }
       }
-      if (!isValidEmail(value)) {
-        setInputError('Please enter a valid email address');
+
+      if (field !== 'email' && !value.trim()) {
+        setInputError('This field is required');
         return false;
       }
     }
 
-    if (field !== 'email' && !value.trim()) {
-      setInputError('This field is required');
+    if (currentStep.type === 'photo' && !profile?.avatar_url) {
+      setInputError('Profile photo is required');
       return false;
     }
-  }
 
-  // Avatar is required - check when on photo step
-  if (currentStep.type === 'photo' && !profile?.avatar_url) {
-    setInputError('Profile photo is required');
-    return false;
-  }
-
-  setInputError('');
-  return true;
-};
+    setInputError('');
+    return true;
+  };
 
   const persistField = async (field: 'employeeName' | 'jobTitle' | 'department' | 'email', value: string) => {
     const normalized = value.trim();
@@ -259,12 +256,12 @@ const validateCurrentStep = (): boolean => {
 
     const asset = result.assets[0];
     setUploadingAvatar(true);
-    
+
     const uri = asset.uri;
     console.log('OnboardingScreen: Setting avatar from', uri);
     setProfile((prev: any) => ({ ...prev, avatar_url: uri, updated_at: Date.now() }));
     await setAvatarUrl(uri);
-    
+
     console.log('OnboardingScreen: Avatar updated successfully');
     setUploadingAvatar(false);
   };
@@ -290,19 +287,19 @@ const validateCurrentStep = (): boolean => {
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
       Animated.parallel([
-        Animated.timing(progressAnim, {
-          toValue: (nextIndex + 1) / totalSteps,
-          duration: 300,
-          useNativeDriver: false,
-        }),
+        ...dotAnims.map((anim, i) =>
+          Animated.timing(anim, {
+            toValue: i === nextIndex ? 1.2 : 1,
+            duration: 300,
+            useNativeDriver: false,
+          })
+        ),
         Animated.sequence([
           Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: false }),
           Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: false }),
         ]),
       ]).start();
     } else {
-      // Final step - complete onboarding with all collected data
-      // Avatar is required - get from profile state
       const avatarUrl = profile?.avatar_url;
       if (!avatarUrl) {
         Alert.alert('Error', 'Profile photo is required. Please go back and upload a photo.');
@@ -342,11 +339,13 @@ const validateCurrentStep = (): boolean => {
       const prevIndex = currentIndex - 1;
       setCurrentIndex(prevIndex);
       Animated.parallel([
-        Animated.timing(progressAnim, {
-          toValue: (prevIndex + 1) / totalSteps,
-          duration: 300,
-          useNativeDriver: false,
-        }),
+        ...dotAnims.map((anim, i) =>
+          Animated.timing(anim, {
+            toValue: i === prevIndex ? 1.2 : 1,
+            duration: 300,
+            useNativeDriver: false,
+          })
+        ),
         Animated.sequence([
           Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: false }),
           Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: false }),
@@ -361,10 +360,6 @@ const validateCurrentStep = (): boolean => {
       setInputError('');
     }
   };
-
-  useEffect(() => {
-    progressAnim.setValue((currentIndex + 1) / totalSteps);
-  }, [currentIndex, progressAnim, totalSteps]);
 
   const renderInputField = () => {
     if (currentStep.type !== 'input' || !currentStep.inputConfig) return null;
@@ -418,52 +413,52 @@ const validateCurrentStep = (): boolean => {
     );
   };
 
-const UploadIcon = ({ size = 24 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-  </Svg>
-);
-
-const renderPhotoStep = () => {
-  if (currentStep.type !== 'photo') return null;
-  const avatarUrl = profile?.avatar_url;
-  
-  return (
-    <View style={styles.photoContainer}>
-      <View style={styles.avatarPreviewContainer}>
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={styles.avatarPreviewLarge} resizeMode="cover" />
-        ) : (
-          <View style={styles.avatarPlaceholderLarge}>
-            <Image source={require('../../assets/icons/profile.png')} style={{ width: 48, height: 48 }} resizeMode="contain" />
-          </View>
-        )}
-      </View>
-      
-      <TouchableOpacity
-        style={styles.uploadButton}
-        onPress={handlePickAvatar}
-        activeOpacity={0.8}
-        disabled={uploadingAvatar}
-      >
-        {uploadingAvatar ? (
-          <ActivityIndicator color={colors.bgMain} size="small" />
-        ) : (
-          <UploadIcon size={20} />
-        )}
-        <Text style={styles.uploadButtonText}>
-          {uploadingAvatar ? 'Uploading...' : (avatarUrl ? 'Change Photo' : 'Upload Photo')}
-        </Text>
-      </TouchableOpacity>
-      
-      {inputError && !avatarUrl && (
-        <Text style={styles.errorText}>{inputError}</Text>
-      )}
-      
-      <Text style={styles.photoHint}>Profile photo is required</Text>
-      </View>
+  const UploadIcon = ({ size = 24 }: { size?: number }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={colors.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+    </Svg>
   );
-};
+
+  const renderPhotoStep = () => {
+    if (currentStep.type !== 'photo') return null;
+    const avatarUrl = profile?.avatar_url;
+
+    return (
+      <View style={styles.photoContainer}>
+        <View style={styles.avatarPreviewContainer}>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatarPreviewLarge} resizeMode="cover" />
+          ) : (
+            <View style={styles.avatarPlaceholderLarge}>
+              <Image source={require('../../assets/icons/profile.png')} style={{ width: 48, height: 48 }} resizeMode="contain" />
+            </View>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={styles.uploadButton}
+          onPress={handlePickAvatar}
+          activeOpacity={0.8}
+          disabled={uploadingAvatar}
+        >
+          {uploadingAvatar ? (
+            <ActivityIndicator color={colors.bgMain} size="small" />
+          ) : (
+            <UploadIcon size={20} />
+          )}
+          <Text style={styles.uploadButtonText}>
+            {uploadingAvatar ? 'Uploading...' : (avatarUrl ? 'Change Photo' : 'Upload Photo')}
+          </Text>
+        </TouchableOpacity>
+
+        {inputError && !avatarUrl && (
+          <Text style={styles.errorText}>{inputError}</Text>
+        )}
+
+        <Text style={styles.photoHint}>Profile photo is required</Text>
+      </View>
+    );
+  };
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -474,19 +469,6 @@ const renderPhotoStep = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.progressBarContainer}>
-          <Animated.View
-            style={[
-              styles.progressBarFill,
-              {
-                width: progressAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '100%'],
-                }),
-              },
-            ]}
-          />
-        </View>
         <View style={styles.stepCounter}>
           <Text style={styles.stepCounterText}>
             Step {currentIndex + 1} of {totalSteps}
@@ -514,7 +496,7 @@ const renderPhotoStep = () => {
                   styles.dot,
                   {
                     backgroundColor: index === currentIndex ? colors.primary : colors.textMuted + '40',
-                    transform: [{ scale: index === currentIndex ? 1.2 : 1 }],
+                    transform: [{ scale: dotAnims[index] }],
                   },
                 ]}
               />
@@ -543,12 +525,10 @@ const renderPhotoStep = () => {
 function makeStyles({ illustrationSize, avatarSize, paddingHorizontalResponsive, isTabletLandscape, isLandscape, isSmallDevice, titleSizeResponsive, subtitleSizeResponsive }: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bgMain },
-    scrollContent: { flexGrow: 1, paddingTop: isSmallDevice ? 40 : 60, paddingBottom: 40, paddingHorizontal: paddingHorizontalResponsive },
-    progressBarContainer: { width: '100%', height: 4, backgroundColor: 'rgba(255, 255, 255, 0.12)', borderRadius: 2, marginBottom: spacing.lg },
-    progressBarFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
+    scrollContent: { flexGrow: 1, minHeight: '100%', paddingTop: isSmallDevice ? 40 : 60, paddingBottom: 40, paddingHorizontal: paddingHorizontalResponsive },
     stepCounter: { alignItems: 'center', marginBottom: spacing.lg },
     stepCounterText: { fontSize: fonts.sizes.sm, color: colors.textMuted, fontWeight: fonts.weights.medium as any },
-    contentContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', flexDirection: isTabletLandscape ? 'row' : 'column' },
+    contentContainer: { flex: 1, justifyContent: 'space-between', alignItems: 'center', flexDirection: isTabletLandscape ? 'row' : 'column' },
     illustrationContainer: { alignItems: isTabletLandscape ? 'flex-start' : 'center', marginBottom: isTabletLandscape ? 0 : spacing.xl, marginRight: isTabletLandscape ? spacing.xl * 2 : 0 },
     centeredIllustration: { width: illustrationSize, height: illustrationSize },
     textContent: { flex: 1, alignItems: isTabletLandscape ? 'flex-start' : 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.md },
@@ -579,10 +559,10 @@ function makeStyles({ illustrationSize, avatarSize, paddingHorizontalResponsive,
     checkmark: { color: colors.bgMain, fontSize: fonts.sizes.md, fontWeight: fonts.weights.bold as any },
     photoContainer: { alignItems: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.lg },
     avatarPreviewContainer: { marginBottom: spacing.lg },
-    avatarPreviewLarge: { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, borderWidth: 2, borderColor: colors.primary },
+    avatarPreviewLarge: { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, borderWidth: 2, borderColor: colors.border },
     avatarPlaceholderLarge: { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, backgroundColor: colors.bgCard, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-    uploadButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, borderRadius: borderRadius.full, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
-    uploadButtonText: { fontSize: fonts.sizes.sm, color: colors.bgMain, fontWeight: fonts.weights.medium as any, marginLeft: spacing.xs },
+    uploadButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.sm, borderRadius: 999, borderWidth: 1, borderColor: colors.primary, backgroundColor: 'transparent' },
+    uploadButtonText: { fontSize: fonts.sizes.sm, color: colors.primary, fontWeight: fonts.weights.medium as any, marginLeft: spacing.xs },
     photoHint: { fontSize: fonts.sizes.sm, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.xs },
     photoOptional: { fontSize: fonts.sizes.xs, color: colors.textMuted, textAlign: 'center' },
   });

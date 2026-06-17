@@ -23,6 +23,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useConvexSync } from '../context/ConvexContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getOrCreateDeviceId } from '../utils/deviceId';
+import { useApp } from '../context/AppContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -60,19 +61,50 @@ const FeedbacksScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useLanguage();
   const { queueMutation } = useConvexSync();
+  const { appData } = useApp();
   const [feedback, setFeedback] = useState('');
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [retryAttempts, setRetryAttempts] = useState(0);
   const [typeSheetVisible, setTypeSheetVisible] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const MAX_RETRY_ATTEMPTS = 3;
 
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const successAnim = useRef(new Animated.Value(0)).current;
+  const successScaleAnim = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    if (!submitted) return;
+    Animated.parallel([
+      Animated.timing(successAnim, {
+        toValue: 1,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(successScaleAnim, {
+        toValue: 1,
+        friction: 7,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    const timer = setTimeout(() => {
+      successAnim.setValue(0);
+      successScaleAnim.setValue(0.6);
+      setSubmitted(false);
+      setFeedback('');
+      setFeedbackType('general');
+      navigation.goBack();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [submitted, navigation]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     getOrCreateDeviceId().then(setDeviceId);
   }, []);
-
-  const slideAnim = useRef(new Animated.Value(0)).current;
 
   const openSheet = () => {
     setTypeSheetVisible(true);
@@ -117,33 +149,23 @@ const FeedbacksScreen = () => {
     setIsSubmitting(true);
 
     try {
-      if (deviceId) {
-        await queueMutation('feedbacks', deviceId, 'upsert', {
-          user_id: deviceId,
-          type: feedbackType,
-          email: null,
-          content: feedback.trim(),
-          metadata: null,
-          created_at: Date.now(),
-        });
-      }
+      await queueMutation('feedbacks', deviceId, 'upsert', {
+        user_id: deviceId,
+        type: feedbackType,
+        email: appData.email || null,
+        content: feedback.trim(),
+        metadata: JSON.stringify({
+          app_version: '3.23.7',
+          platform: Platform.OS,
+          device_id: deviceId,
+        }),
+        created_at: Date.now(),
+      });
 
       setRetryAttempts(0);
-      Alert.alert(
-        t('feedbacks.thankYou'),
-        t('feedbacks.feedbackSuccess'),
-        [
-          {
-            text: t('common.ok'),
-            onPress: () => {
-              setFeedback('');
-              setFeedbackType('general');
-              navigation.goBack();
-            },
-          },
-        ]
-      );
-    } catch (_error) {
+      setSubmitted(true);
+      setFeedback('');
+    } catch {
       const canRetry = retryAttempts < MAX_RETRY_ATTEMPTS;
       const remainingAttempts = MAX_RETRY_ATTEMPTS - retryAttempts;
 
@@ -173,6 +195,7 @@ const FeedbacksScreen = () => {
   };
 
   const selectedType = feedbackTypes.find(f => f.id === feedbackType)!;
+  const charCount = feedback.trim().length;
 
   return (
     <View style={styles.container}>
@@ -182,72 +205,80 @@ const FeedbacksScreen = () => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-      onPress={() => navigation.goBack()}
-      activeOpacity={0.7}
-    >
-      <BackIcon />
-    </TouchableOpacity>
-    <Text style={styles.headerTitle}>{t('feedbacks.title')}</Text>
-    <View style={styles.headerSpacer} />
-  </View>
-
-  <KeyboardAvoidingView
-    style={styles.content}
-    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-  >
-    <ScrollView
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Icon Section */}
-      <View style={styles.iconSection}>
-        <View style={styles.iconContainer}>
-          <FeedbacksIcon size={36} />
-        </View>
-        <Text style={styles.title}>{t('feedbacks.weValueYourFeedback')}</Text>
-        <Text style={styles.subtitle}>
-          {t('feedbacks.helpUsImprove')}
-        </Text>
-      </View>
-
-      {/* Feedback Type Selection */}
-      <View style={styles.section}>
-        <Text style={styles.label}>{t('feedbacks.feedbackType')}</Text>
-        <TouchableOpacity
-          style={styles.typeSelector}
-          onPress={openSheet}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <View style={styles.typeSelectorLeft}>
-            <View style={styles.typeDot} />
-            <Text style={styles.typeSelectorText}>{t(selectedType.labelKey)}</Text>
-          </View>
-          <Text style={styles.typeSelectorArrow}>›</Text>
+          <BackIcon />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('feedbacks.title')}</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
-      {/* Feedback Input */}
-      <View style={styles.section}>
-        <Text style={styles.label}>{t('feedbacks.yourFeedback')}</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder={t('feedbacks.placeholder')}
-          placeholderTextColor={colors.textMuted}
-          value={feedback}
-          onChangeText={setFeedback}
-          multiline
-          numberOfLines={5}
-          textAlignVertical="top"
-        />
-      </View>
+      <KeyboardAvoidingView
+        style={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Icon Section */}
+          <View style={styles.iconSection}>
+            <View style={styles.iconContainer}>
+              <FeedbacksIcon size={36} />
+            </View>
+            <Text style={styles.title}>{t('feedbacks.weValueYourFeedback')}</Text>
+            <Text style={styles.subtitle}>
+              {t('feedbacks.helpUsImprove')}
+            </Text>
+          </View>
+
+          {/* Feedback Type Selection */}
+          <View style={styles.section}>
+            <Text style={styles.label}>{t('feedbacks.feedbackType')}</Text>
+            <TouchableOpacity
+              style={styles.typeSelector}
+              onPress={openSheet}
+              activeOpacity={0.7}
+            >
+              <View style={styles.typeSelectorLeft}>
+                <View style={styles.typeDot} />
+                <Text style={styles.typeSelectorText}>{t(selectedType.labelKey)}</Text>
+              </View>
+              <Text style={styles.typeSelectorArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Feedback Input */}
+          <View style={styles.section}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>{t('feedbacks.yourFeedback')}</Text>
+              <Text style={[styles.charCount, { color: charCount >= 10 || charCount === 0 ? colors.textMuted : colors.danger }]}>
+                {charCount}/5000
+              </Text>
+            </View>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder={t('feedbacks.placeholder')}
+              placeholderTextColor={colors.textMuted}
+              value={feedback}
+              onChangeText={setFeedback}
+              multiline
+              numberOfLines={5}
+              textAlignVertical="top"
+            />
+            {charCount > 0 && charCount < 10 && (
+              <Text style={styles.minLengthHint}>{t('feedbacks.minLengthHint')}</Text>
+            )}
+          </View>
 
           {/* Submit Button */}
           <TouchableOpacity
             style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             activeOpacity={0.8}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !deviceId}
           >
             {isSubmitting ? (
               <ActivityIndicator color={colors.bgMain} size="small" />
@@ -259,12 +290,48 @@ const FeedbacksScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          {/* Info Text */}
           <Text style={styles.infoText}>
             {t('feedbacks.feedbackInfoText')}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Success Bottom Sheet */}
+      {submitted && (
+        <View style={styles.sheetOverlay}>
+          <TouchableOpacity style={styles.sheetBackdrop} activeOpacity={1} onPress={() => {}} />
+          <Animated.View
+            style={[
+              styles.sheetContent,
+              styles.successSheetContent,
+              {
+                transform: [
+                  {
+                    translateY: successScaleAnim.interpolate({
+                      inputRange: [0.6, 1],
+                      outputRange: [SCREEN_HEIGHT * 0.45, 0],
+                    }),
+                  },
+                  {
+                    scale: successScaleAnim.interpolate({
+                      inputRange: [0.6, 1],
+                      outputRange: [0.92, 1],
+                    }),
+                  },
+                ],
+                opacity: successAnim,
+              },
+            ]}
+          >
+            <View style={styles.sheetHandle} />
+            <View style={styles.successImageWrap}>
+              <Image source={require('../../assets/success.png')} style={styles.successImage} resizeMode="contain" />
+            </View>
+            <Text style={styles.successHello}>{t('feedbacks.thankYou')}</Text>
+            <Text style={styles.successBody}>{t('feedbacks.feedbackSuccess')}</Text>
+          </Animated.View>
+        </View>
+      )}
 
       {/* Type Selection Bottom Sheet */}
       {typeSheetVisible && (
@@ -274,17 +341,20 @@ const FeedbacksScreen = () => {
             style={[
               styles.sheetContent,
               {
-                transform: [{
-                  translateY: slideAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [SCREEN_HEIGHT * 0.4, 0],
-                  }),
-                }, {
-                  scale: slideAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.94, 1],
-                  }),
-                }],
+                transform: [
+                  {
+                    translateY: slideAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [SCREEN_HEIGHT * 0.4, 0],
+                    }),
+                  },
+                  {
+                    scale: slideAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.94, 1],
+                    }),
+                  },
+                ],
                 opacity: slideAnim,
               },
             ]}
@@ -304,7 +374,7 @@ const FeedbacksScreen = () => {
                     onPress={() => selectType(type.id)}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.sheetOptionLeft}>
+                    <View style={styles.typeSelectorLeft}>
                       <View style={[
                         styles.sheetOptionDot,
                         isActive && styles.sheetOptionDotActive,
@@ -406,14 +476,23 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: spacing.lg,
   },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
+  },
   label: {
     fontSize: fonts.sizes.xs,
     fontWeight: fonts.weights.bold as any,
     color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: spacing.sm,
-    marginLeft: spacing.xs,
+  },
+  charCount: {
+    fontSize: fonts.sizes.xs,
+    fontWeight: fonts.weights.medium as any,
   },
   typeSelector: {
     flexDirection: 'row',
@@ -461,6 +540,12 @@ const styles = StyleSheet.create({
     height: 150,
     paddingTop: spacing.md,
   },
+  minLengthHint: {
+    fontSize: fonts.sizes.xs,
+    color: colors.danger ?? colors.textMuted,
+    marginTop: spacing.xs,
+    marginLeft: spacing.xs,
+  },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -488,6 +573,36 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     lineHeight: 20,
   },
+  successSheetContent: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxxl + spacing.lg,
+    alignItems: 'center',
+  },
+  successImageWrap: {
+    width: 140,
+    height: 140,
+    marginBottom: spacing.lg,
+  },
+  successImage: {
+    width: 140,
+    height: 140,
+  },
+  successHello: {
+    fontSize: fonts.sizes.xxl,
+    fontWeight: fonts.weights.bold as any,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  successBody: {
+    fontSize: fonts.sizes.md,
+    fontWeight: fonts.weights.medium as any,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: spacing.lg,
+  },
   sheetOverlay: {
     position: 'absolute',
     top: 0,
@@ -502,7 +617,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay,
   },
   sheetContent: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: '#000000',
     borderTopLeftRadius: borderRadius.xxl,
     borderTopRightRadius: borderRadius.xxl,
     padding: spacing.xxl,
