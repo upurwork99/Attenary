@@ -6,7 +6,6 @@
     "production": {}
   },
   "build": {
-    "distribution": "internal",
     "preview": {
       "distribution": "internal",
       "android": {
