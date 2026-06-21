@@ -205,6 +205,8 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
             style={[
               styles.fluidPill,
               {
+                width: tabLayouts[state.index]?.width ?? 0,
+                height: tabLayouts[state.index]?.height ?? 0,
                 transform: [
                   { translateX: pillTranslateX },
                   { translateY: pillTranslateY },
