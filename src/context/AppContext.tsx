@@ -135,9 +135,9 @@ export const Provider = ({ children }: AppProviderProps) => {
     }
   };
 
-  const saveData = async (): Promise<boolean> => {
+  const saveData = async (data?: AppData): Promise<boolean> => {
     try {
-      const dataString = JSON.stringify(appDataRef.current);
+      const dataString = JSON.stringify(data || appDataRef.current);
       return await setStorageItem(STORAGE_KEY, dataString);
     } catch (error) {
       console.log('Data save error (non-critical):', error instanceof Error ? error.message : error);
@@ -208,8 +208,9 @@ export const Provider = ({ children }: AppProviderProps) => {
   };
 
   const completeOnboarding = async () => {
-    setAppData((prev) => ({ ...prev, onboardingCompleted: true }));
-    await saveData();
+    const newData = { ...appDataRef.current, onboardingCompleted: true };
+    setAppData(newData);
+    await saveData(newData);
   };
 
   const updateOnboardingProgress = async (step: number) => {
@@ -412,20 +413,22 @@ export const Provider = ({ children }: AppProviderProps) => {
     const previousData = appDataRef.current;
 
     try {
-      setAppData(prev => ({
-        ...prev,
+      const newAppData: AppData = {
+        ...appDataRef.current,
         sessions: mergedSessions,
-        employeeName: backup.data.employeeName || prev.employeeName,
-        email: backup.data.email || prev.email,
-        jobTitle: backup.data.jobTitle || prev.jobTitle,
-        department: backup.data.department || prev.department,
-        hourRate: backup.data.hourRate ?? prev.hourRate,
-        onboardingCompleted: backup.data.onboardingCompleted ?? prev.onboardingCompleted,
-        onboardingProgress: backup.data.onboardingProgress || prev.onboardingProgress,
-        appSettings: backup.data.appSettings || prev.appSettings,
-      }));
+        employeeName: backup.data.employeeName || appDataRef.current.employeeName,
+        email: backup.data.email || appDataRef.current.email,
+        jobTitle: backup.data.jobTitle || appDataRef.current.jobTitle,
+        department: backup.data.department || appDataRef.current.department,
+        hourRate: backup.data.hourRate ?? appDataRef.current.hourRate,
+        onboardingCompleted: backup.data.onboardingCompleted ?? appDataRef.current.onboardingCompleted,
+        onboardingProgress: backup.data.onboardingProgress || appDataRef.current.onboardingProgress,
+        appSettings: backup.data.appSettings || appDataRef.current.appSettings,
+      };
 
-      const saved = await saveData();
+      setAppData(newAppData);
+
+      const saved = await saveData(newAppData);
       if (!saved) throw new Error('Failed to save restored data');
 
     return {

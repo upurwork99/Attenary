@@ -68,14 +68,14 @@ type MainStackParamList = {
 };
 
 const Navigation = () => {
-  const { appData } = useApp();
+  const { appData, loading } = useApp();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   const onboardingCompleted = appData.onboardingCompleted;
 
   useEffect(() => {
-    if (!onboardingCompleted && Platform.OS !== 'web') {
+    if (!loading && !onboardingCompleted && Platform.OS !== 'web') {
       checkForUpdate()
         .then(update => {
           if (update) {
@@ -87,13 +87,21 @@ const Navigation = () => {
           console.log('Update check failed (non-critical):', error?.message || error);
         });
     }
-  }, [onboardingCompleted]);
+  }, [loading, onboardingCompleted]);
 
   const initialRoute = onboardingCompleted ? 'Main' : 'Onboarding';
 
   const handleDismissUpdate = () => {
     setShowUpdateModal(false);
   };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#f1f5f9', fontSize: 16 }}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <TabBarVisibilityProvider>
