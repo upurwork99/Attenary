@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator, Modal, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator, Modal, Image, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
@@ -36,6 +36,7 @@ const UploadIcon = ({ size = 18 }: { size?: number }) => (
 );
 
 const RestoreBackupScreen = () => {
+  const { width } = useWindowDimensions();
   const navigation = useNavigation<any>();
   const { t } = useLanguage();
   const { importBackupFromFile, previewImport, restoreBackup, loading, getStoredBackup } = useApp();
@@ -200,8 +201,8 @@ const RestoreBackupScreen = () => {
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <View style={styles.heroOuterRing}>
-          <View style={styles.heroIconContainer}>
+          <View style={[styles.heroOuterRing, width <= 360 && { width: 120, height: 120, marginBottom: spacing.md }]}>
+          <View style={[styles.heroIconContainer, width <= 360 && { width: 100, height: 100 }]}>
             <RestoreIcon size={44} />
           </View>
           </View>
@@ -210,7 +211,7 @@ const RestoreBackupScreen = () => {
         </View>
 
         {/* Metrics Grid */}
-        <View style={styles.metricsGrid}>
+        <View style={[styles.metricsGrid, width <= 360 && { flexWrap: 'wrap' }]}>
           <View style={[styles.metricCard, isFileSelected && styles.metricCardActive]}>
             <Text style={styles.metricLabel}>{t('restoreBackup.fileStatus')}</Text>
             <Text style={[styles.metricValue, isFileSelected && styles.metricValueAccent]}>

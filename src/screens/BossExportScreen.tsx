@@ -302,8 +302,9 @@ const BossExportScreen = () => {
           const link = document.createElement('a');
           link.href = generatedPdfPath;
           link.download = fileName;
+          document.body.appendChild(link);
           link.click();
-          URL.revokeObjectURL(generatedPdfPath);
+          document.body.removeChild(link);
           if (option === 'save') {
             Alert.alert(t('common.success'), t('bossExport.savedPdf'));
           }
@@ -324,8 +325,9 @@ const BossExportScreen = () => {
             const link = document.createElement('a');
             link.href = generatedPdfPath;
             link.download = fileName;
+            document.body.appendChild(link);
             link.click();
-            URL.revokeObjectURL(generatedPdfPath);
+            document.body.removeChild(link);
             closeSheet();
             return;
           }
@@ -334,36 +336,53 @@ const BossExportScreen = () => {
         const link = document.createElement('a');
         link.href = generatedPdfPath;
         link.download = fileName;
+        document.body.appendChild(link);
         link.click();
-        URL.revokeObjectURL(generatedPdfPath);
+        document.body.removeChild(link);
         closeSheet();
         return;
       }
 
       const fs = FileSystem as any;
       const destPath = fs.documentDirectory + fileName;
+      let actualPath = generatedPdfPath;
 
       if (option === 'save') {
-        await fs.copyAsync({ from: generatedPdfPath, to: destPath });
+        try {
+          await fs.copyAsync({ from: generatedPdfPath, to: destPath });
+        } catch (e) {
+          console.warn('Save copy failed:', e);
+        }
         Alert.alert(t('common.success'), t('bossExport.savedPdf'));
         closeSheet();
         return;
       }
 
-      await fs.copyAsync({ from: generatedPdfPath, to: destPath });
-      closeSheet();
-
-      if (option === 'native') {
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (isAvailable) {
-          await Sharing.shareAsync(destPath, { mimeType: 'application/pdf', dialogTitle: 'Share Boss Export' });
-        } else {
-          Alert.alert(t('bossExport.sharingNotAvailable'), t('bossExport.sharingNotAvailableDevice'));
-        }
-        return;
+      try {
+        await fs.copyAsync({ from: generatedPdfPath, to: destPath });
+        actualPath = destPath;
+      } catch (e) {
+        console.warn('Share copy failed, using original path:', e);
       }
 
-      const shareUrl = `file://${destPath}`;
+      if (option === 'native') {
+        try {
+          const isAvailable = await Sharing.isAvailableAsync();
+          if (isAvailable) {
+            await Sharing.shareAsync(actualPath, { mimeType: 'application/pdf', dialogTitle: 'Share Boss Export' });
+          } else {
+            Alert.alert(t('bossExport.sharingNotAvailable'), t('bossExport.sharingNotAvailableDevice'));
+          }
+          closeSheet();
+          return;
+        } catch (nativeError) {
+          console.error('Native share failed:', nativeError);
+          Alert.alert(t('common.error'), t('bossExport.shareFailed'));
+          closeSheet();
+          return;
+        }
+      }
+
       const message = `Attenary Hours Report - ${selectedMonth} ${selectedYear}`;
       let appScheme = '';
 
@@ -381,15 +400,39 @@ const BossExportScreen = () => {
           break;
       }
 
-      const canOpen = await Linking.canOpenURL(appScheme).catch(() => false);
-      if (canOpen) {
-        await Linking.openURL(appScheme);
-      } else {
-        await Sharing.shareAsync(shareUrl, { mimeType: 'application/pdf', dialogTitle: 'Share Boss Export' });
+      try {
+        const canOpen = await Linking.canOpenURL(appScheme);
+        if (canOpen) {
+          await Linking.openURL(appScheme);
+        } else {
+          const isAvailable = await Sharing.isAvailableAsync();
+          if (isAvailable) {
+            await Sharing.shareAsync(actualPath.startsWith('file://') ? actualPath : `file://${actualPath}`, { mimeType: 'application/pdf', dialogTitle: 'Share Boss Export' });
+          } else {
+            Alert.alert(t('bossExport.sharingNotAvailable'), t('bossExport.sharingNotAvailableDevice'));
+          }
+        }
+        closeSheet();
+      } catch (appError) {
+        console.error('App share failed:', appError);
+        try {
+          const isAvailable = await Sharing.isAvailableAsync();
+          if (isAvailable) {
+            await Sharing.shareAsync(actualPath.startsWith('file://') ? actualPath : `file://${actualPath}`, { mimeType: 'application/pdf', dialogTitle: 'Share Boss Export' });
+            closeSheet();
+          } else {
+            throw appError;
+          }
+        } catch (fallbackError) {
+          console.error('Fallback share also failed:', fallbackError);
+          Alert.alert(t('common.error'), t('bossExport.shareFailed'));
+          closeSheet();
+        }
       }
     } catch (error) {
       console.log('Share error:', error);
       Alert.alert(t('common.error'), t('bossExport.shareFailed'));
+      closeSheet();
     }
   };
 

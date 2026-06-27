@@ -60,16 +60,14 @@ type FeedbackType = typeof feedbackTypes[number]['id'];
 const FeedbacksScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useLanguage();
-  const { queueMutation } = useConvexSync();
+  const { submitFeedback, drainPendingFeedbacks, isSubmittingFeedback } = useConvexSync();
   const { appData } = useApp();
   const [feedback, setFeedback] = useState('');
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('general');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [retryAttempts, setRetryAttempts] = useState(0);
   const [typeSheetVisible, setTypeSheetVisible] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  const MAX_RETRY_ATTEMPTS = 3;
+  const [deviceIdLoading, setDeviceIdLoading] = useState(true);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
   const successAnim = useRef(new Animated.Value(0)).current;
@@ -103,7 +101,10 @@ const FeedbacksScreen = () => {
   }, [submitted, navigation]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    getOrCreateDeviceId().then(setDeviceId);
+    getOrCreateDeviceId().then((id) => {
+      setDeviceId(id);
+      setDeviceIdLoading(false);
+    });
   }, []);
 
   const openSheet = () => {
@@ -131,7 +132,16 @@ const FeedbacksScreen = () => {
     closeSheet();
   };
 
+  useEffect(() => {
+    drainPendingFeedbacks();
+  }, [drainPendingFeedbacks]);
+
   const handleSubmit = async () => {
+    if (!deviceId) {
+      Alert.alert(t('common.error'), 'Device ID is initializing. Please try again in a moment.');
+      return;
+    }
+
     if (!feedback.trim()) {
       Alert.alert(t('common.error'), t('feedbacks.pleaseEnterFeedback'));
       return;
@@ -142,56 +152,30 @@ const FeedbacksScreen = () => {
       return;
     }
 
-    if (isSubmitting) {
-      return;
-    }
+    const sent = await submitFeedback({
+      user_id: deviceId,
+      type: feedbackType,
+      email: appData.email || undefined,
+      content: feedback.trim(),
+      metadata: JSON.stringify({
+        app_version: '3.23.7',
+        platform: Platform.OS,
+        device_id: deviceId,
+      }),
+      created_at: Date.now(),
+    });
 
-    setIsSubmitting(true);
-
-    try {
-      await queueMutation('feedbacks', deviceId, 'upsert', {
-        user_id: deviceId,
-        type: feedbackType,
-        email: appData.email || null,
-        content: feedback.trim(),
-        metadata: JSON.stringify({
-          app_version: '3.23.7',
-          platform: Platform.OS,
-          device_id: deviceId,
-        }),
-        created_at: Date.now(),
-      });
-
-      setRetryAttempts(0);
+    if (sent) {
       setSubmitted(true);
-      setFeedback('');
-    } catch {
-      const canRetry = retryAttempts < MAX_RETRY_ATTEMPTS;
-      const remainingAttempts = MAX_RETRY_ATTEMPTS - retryAttempts;
-
+    } else {
       Alert.alert(
-        t('feedbacks.connectionError'),
-        canRetry
-          ? t('feedbacks.connectionErrorRetry').replace('{remaining}', remainingAttempts.toString())
-          : t('feedbacks.maxRetryReached'),
-        canRetry
-          ? [
-              { text: t('feedbacks.cancel'), style: 'cancel', onPress: () => setRetryAttempts(0) },
-              {
-                text: t('feedbacks.retry'),
-                onPress: () => {
-                  setRetryAttempts(retryAttempts + 1);
-                  handleSubmit();
-                },
-              },
-            ]
-          : [
-              { text: t('common.ok'), onPress: () => setRetryAttempts(0) },
-            ]
+        t('feedbacks.feedbackSavedLocally'),
+        'Saved locally -- will send when connection returns.',
+        [{ text: t('common.ok') }],
       );
-    } finally {
-      setIsSubmitting(false);
     }
+    setFeedback('');
+    setFeedbackType('general');
   };
 
   const selectedType = feedbackTypes.find(f => f.id === feedbackType)!;
@@ -275,18 +259,18 @@ const FeedbacksScreen = () => {
 
           {/* Submit Button */}
           <TouchableOpacity
-            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+            style={[styles.submitButton, (isSubmittingFeedback || deviceIdLoading) && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             activeOpacity={0.8}
-            disabled={isSubmitting || !deviceId}
+            disabled={isSubmittingFeedback || deviceIdLoading || !deviceId}
           >
-            {isSubmitting ? (
+            {(isSubmittingFeedback || deviceIdLoading) ? (
               <ActivityIndicator color={colors.bgMain} size="small" />
             ) : (
               <SendIcon size={18} />
             )}
             <Text style={styles.submitButtonText}>
-              {isSubmitting ? t('feedbacks.submitting') : t('feedbacks.submit')}
+              {isSubmittingFeedback ? t('feedbacks.submitting') : deviceIdLoading ? 'Initializing...' : t('feedbacks.submit')}
             </Text>
           </TouchableOpacity>
 

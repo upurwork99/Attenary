@@ -59,7 +59,7 @@ export interface Feedback {
   type: 'general' | 'bug' | 'feature';
   email?: string;
   content: string;
-  metadata?: Record<string, any>;
+  metadata?: string;
   created_at?: number;
 }
 

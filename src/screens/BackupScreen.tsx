@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
@@ -36,6 +36,7 @@ const PlusIcon = ({ size = 18 }: { size?: number }) => (
 );
 
 const BackupScreen = () => {
+  const { width } = useWindowDimensions();
   const navigation = useNavigation<any>();
   const { t } = useLanguage();
   const { appData, createBackup, saveBackup, loading } = useApp();
@@ -108,8 +109,8 @@ const BackupScreen = () => {
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <View style={styles.heroOuterRing}>
-          <View style={styles.heroIconContainer}>
+          <View style={[styles.heroOuterRing, width <= 360 && { width: 120, height: 120, marginBottom: spacing.md }]}>
+          <View style={[styles.heroIconContainer, width <= 360 && { width: 100, height: 100 }]}>
             <BackupIcon size={44} />
           </View>
           </View>
@@ -118,7 +119,7 @@ const BackupScreen = () => {
         </View>
 
         {/* Metrics Grid */}
-        <View style={styles.metricsGrid}>
+        <View style={[styles.metricsGrid, width <= 360 && { flexWrap: 'wrap' }]}>
           <View style={[styles.metricCard, isBackupReady && styles.metricCardShimmer]}>
             <Text style={styles.metricLabel}>{t('backup.totalSessions')}</Text>
             <Text style={styles.metricValue}>{backupStats.totalSessions}</Text>

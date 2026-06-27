@@ -5,19 +5,19 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   StatusBar,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import { formatTime, getDateString } from '../utils/timeUtils';
 import Svg, { Polyline, Path } from 'react-native-svg';
 
-const { width } = Dimensions.get('window');
 const CHART_HEIGHT = 48;
 
 const AnalyticsScreen = () => {
+  const { width } = useWindowDimensions();
   const { appData } = useApp();
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('week');
   const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
@@ -323,7 +323,7 @@ const AnalyticsScreen = () => {
         </View>
 
         <View style={styles.heroPanel}>
-          <View style={styles.heroGlow} />
+          <View style={[styles.heroGlow, width <= 360 && { width: 60, height: 60, top: -20, right: -20 }]} />
           <View style={styles.heroContent}>
             <View style={styles.heroLeft}>
               <Text style={styles.heroLabel}>Total Hours</Text>
@@ -916,7 +916,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
-    maxWidth: width - spacing.xxl * 2,
+    maxWidth: 420,
     backgroundColor: '#000000',
     borderRadius: borderRadius.xxl,
     padding: spacing.xxl,

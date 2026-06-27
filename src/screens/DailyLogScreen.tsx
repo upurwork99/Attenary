@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   StatusBar,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import Svg, {
   Defs,
@@ -35,21 +35,6 @@ const {
 // DESIGN TOKENS (HTML exact)
 // ═══════════════════════════════════════════════════════════════════
 
-const { width: SCREEN_W } = Dimensions.get('window');
-const CHART_W = 720;
-const CHART_H = 160;
-const CHART_PAD_LEFT = 24;
-const CHART_PAD_RIGHT = 12;
-const CHART_PAD_TOP = 8;
-const CHART_PAD_BOT = 24;
-const PLOT_X = CHART_PAD_LEFT;
-const PLOT_W = CHART_W - CHART_PAD_LEFT - CHART_PAD_RIGHT;
-const PLOT_Y = CHART_PAD_TOP;
-const PLOT_H = CHART_H - CHART_PAD_TOP - CHART_PAD_BOT;
-const NUM_HOURS = 24;
-const DEFAULT_MAX_Y = 5;
-const BAR_PERCENT = 0.55;
-
 const PURPLE = '#a374f9';
 const PURPLE_RGB = '163, 116, 249';
 
@@ -58,8 +43,6 @@ const HOUR_LABELS = [
   '12 PM','1 PM','2 PM','3 PM','4 PM','5 PM','6 PM','7 PM','8 PM','9 PM','10 PM','11 PM',
 ];
 
-const SLOT_W = PLOT_W / NUM_HOURS;
-const BAR_W = SLOT_W * BAR_PERCENT;
 
 // ═══════════════════════════════════════════════════════════════════
 // FORMATTERS
@@ -98,20 +81,34 @@ interface ActivityChartProps {
 }
 
 const ActivityChart: React.FC<ActivityChartProps> = ({ data }) => {
+  const { width } = useWindowDimensions();
   const scrollRef = useRef<any>(null);
   const [tooltip, setTooltip] = useState<{ cx: number; cy: number; value: number } | null>(null);
-
-  useEffect(() => {
-    const t = setTimeout(
-      () => scrollRef.current?.scrollTo({ x: 190, animated: true }),
-      300,
-    );
-    return () => clearTimeout(t);
-  }, []);
-
+  const isSmall = width <= 360;
+  const CHART_W = isSmall ? Math.max(480, width - 24) : Math.min(720, width);
+  const CHART_H = 160;
+  const CHART_PAD_LEFT = 24;
+  const CHART_PAD_RIGHT = 12;
+  const CHART_PAD_TOP = 8;
+  const CHART_PAD_BOT = 24;
+  const PLOT_X = CHART_PAD_LEFT;
+  const PLOT_W = CHART_W - CHART_PAD_LEFT - CHART_PAD_RIGHT;
+  const NUM_HOURS = 24;
+  const DEFAULT_MAX_Y = 5;
+  const BAR_PERCENT = 0.55;
+  const SLOT_W = PLOT_W / NUM_HOURS;
+  const BAR_W = SLOT_W * BAR_PERCENT;
   const bottomY = CHART_H - CHART_PAD_BOT;
   const topY = CHART_PAD_TOP;
   const plotHeight = bottomY - topY;
+
+  useEffect(() => {
+    const t = setTimeout(
+      () => scrollRef.current?.scrollTo({ x: Math.max(0, CHART_W / 3.5 - 40), animated: true }),
+      300,
+    );
+    return () => clearTimeout(t);
+  }, [CHART_W]);
 
   const maxY = useMemo(() => {
     const values = data ?? [];
@@ -276,12 +273,17 @@ const InnerCard: React.FC<{ style?: any; children: React.ReactNode }> = ({
 // AMBIENT BLURS
 // ═══════════════════════════════════════════════════════════════════
 
-const AmbientBlurs = () => (
-  <>
-    <View style={styles.ambientTopRight} pointerEvents="none" />
-    <View style={styles.ambientBottomLeft} pointerEvents="none" />
-  </>
-);
+const AmbientBlurs = () => {
+  const { width } = useWindowDimensions();
+  const size = width <= 360 ? 64 : 128;
+  const offset = width <= 360 ? -24 : -48;
+  return (
+    <>
+      <View style={[styles.ambientBase, { width: size, height: size, top: offset, right: offset }, styles.ambientBlurTop]} pointerEvents="none" />
+      <View style={[styles.ambientBase, { width: size, height: size, bottom: offset, left: offset }, styles.ambientBlurBottom]} pointerEvents="none" />
+    </>
+  );
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // TOTAL HOURS CARD
@@ -548,22 +550,14 @@ const styles = StyleSheet.create({
     gap: 20,
   },
 
-  ambientTopRight: {
+  ambientBase: {
     position: 'absolute',
-    top: -48,
-    right: -48,
-    width: 128,
-    height: 128,
     borderRadius: 64,
+  },
+  ambientBlurTop: {
     backgroundColor: `rgba(${PURPLE_RGB}, 0.08)`,
   },
-  ambientBottomLeft: {
-    position: 'absolute',
-    bottom: -48,
-    left: -48,
-    width: 128,
-    height: 128,
-    borderRadius: 64,
+  ambientBlurBottom: {
     backgroundColor: '#363636',
     opacity: 0.3,
   },

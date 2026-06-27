@@ -9,10 +9,6 @@
  */
 
 import type * as feedbacks from "../feedbacks.js";
-import type * as profiles from "../profiles.js";
-import type * as sessions from "../sessions.js";
-import type * as settings from "../settings.js";
-import type * as sync from "../sync.js";
 
 import type {
   ApiFromModules,
@@ -22,10 +18,6 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   feedbacks: typeof feedbacks;
-  profiles: typeof profiles;
-  sessions: typeof sessions;
-  settings: typeof settings;
-  sync: typeof sync;
 }>;
 
 /**

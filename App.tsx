@@ -5,7 +5,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, StyleSheet, Alert, Platform, ScrollView } from 'react-native';
 import { Provider } from './src/context/AppContext';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
-import { ConvexIdentityProvider } from './src/context/ConvexIdentityProvider';
 import { ConvexSyncProvider } from './src/context/ConvexContext';
 import Navigation from './src/navigation/Navigation';
 import { ThemeProvider } from './src/theme/ThemeContext';
@@ -231,14 +230,12 @@ export default function App() {
                   <LanguageProvider>
                     <ContextErrorBoundary>
                       <ConvexProvider client={convex}>
-                        <ConvexIdentityProvider>
-                          <ConvexSyncProvider>
-                            <Provider>
-                              <StatusBar style="light" backgroundColor="#0f172a" />
-                              <Navigation />
-                            </Provider>
-                          </ConvexSyncProvider>
-                        </ConvexIdentityProvider>
+                        <ConvexSyncProvider>
+                          <Provider>
+                            <StatusBar style="light" backgroundColor="#0f172a" />
+                            <Navigation />
+                          </Provider>
+                        </ConvexSyncProvider>
                       </ConvexProvider>
                     </ContextErrorBoundary>
                   </LanguageProvider>

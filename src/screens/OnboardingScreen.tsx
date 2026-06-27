@@ -16,11 +16,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { useConvexSync } from '../context/ConvexContext';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, fonts } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
-import { getOrCreateDeviceId } from '../utils/deviceId';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
 
@@ -65,16 +63,10 @@ const OnboardingScreen = () => {
   const [selectedLanguage, setSelectedLanguage] = useState(language);
   const [inputError, setInputError] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [deviceId, setDeviceId] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const navigation: any = useNavigation();
   const [profile, setProfile] = useState<any>(null);
-  const { queueMutation } = useConvexSync();
   const { setEmployeeName, setEmail, setJobTitle, setDepartment, setAvatarUrl, completeOnboarding } = useApp();
-
-  useEffect(() => {
-    getOrCreateDeviceId().then(setDeviceId);
-  }, []);
 
   useEffect(() => {
     if (profile?.onboarding_completed) {
@@ -318,17 +310,6 @@ const OnboardingScreen = () => {
 
       setProfile((prev: any) => ({ ...prev, ...onboardingPayload, onboarding_completed: true, updated_at: Date.now() }));
       await completeOnboarding();
-      await queueMutation('profiles', deviceId, 'upsert', {
-        user_id: deviceId,
-        email: onboardingPayload.email ?? null,
-        full_name: onboardingPayload.full_name,
-        job_title: onboardingPayload.job_title ?? null,
-        department: onboardingPayload.department ?? null,
-        avatar_url: onboardingPayload.avatar_url ?? null,
-        language: onboardingPayload.language ?? null,
-        onboarding_completed: true,
-        updated_at: Date.now(),
-      });
       navigation.replace('Main');
     }
   };

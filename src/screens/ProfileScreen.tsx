@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, StatusBar, Image, Animated, Dimensions, Easing } from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, StatusBar, Image, Animated, Dimensions, Easing, useWindowDimensions } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { useConvexSync } from '../context/ConvexContext';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
 import Svg, { Path } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { useTabBarVisibility } from '../context/TabBarVisibilityContext';
-import { getOrCreateDeviceId } from '../utils/deviceId';
 import * as ImagePicker from 'expo-image-picker';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -39,8 +37,8 @@ const EditIcon = ({ size = 16, color = colors.textPrimary }: { size?: number; co
 );
 
 const ProfileScreen = () => {
-  const { appData, saveData } = useApp();
-  const { queueMutation } = useConvexSync();
+  const { width } = useWindowDimensions();
+  const { appData } = useApp();
   const { t } = useLanguage();
   const { setVisible } = useTabBarVisibility();
   const [profile, setProfile] = useState<any>(null);
@@ -51,12 +49,7 @@ const ProfileScreen = () => {
   const [jobTitle, setJobTitleInput] = useState('');
   const [department, setDepartmentInput] = useState('');
   const [saving, setSaving] = useState(false);
-  const [deviceId, setDeviceId] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    getOrCreateDeviceId().then(setDeviceId);
-  }, []);
 
   useEffect(() => {
     setAvatarUrl(appData.avatarUrl || null);
@@ -73,7 +66,6 @@ const ProfileScreen = () => {
         job_title: appData.jobTitle,
         department: appData.department,
         avatar_url: avatarUrl || appData.avatarUrl,
-        language: appData.appSettings?.language,
         onboarding_completed: appData.onboardingCompleted,
         created_at: Date.now(),
         updated_at: Date.now(),
@@ -83,24 +75,15 @@ const ProfileScreen = () => {
     });
   }, [appData.employeeName, appData.email, appData.jobTitle, appData.department, avatarUrl, appData.avatarUrl]);
 
-  const syncProfileToConvex = async (updates: any) => {
-    if (!deviceId) return;
-    await queueMutation('profiles', deviceId, 'upsert', {
-      user_id: deviceId,
-      ...updates,
-      updated_at: Date.now(),
-    });
-  };
-
-  const nameSlideAnim = useRef(new Animated.Value(1)).current;
-  const jobSlideAnim = useRef(new Animated.Value(1)).current;
-  const deptSlideAnim = useRef(new Animated.Value(1)).current;
-
   useEffect(() => {
     setEmployeeNameInput(profile?.full_name || '');
     setJobTitleInput(profile?.job_title || '');
     setDepartmentInput(profile?.department || '');
   }, [profile]);
+
+  const nameSlideAnim = useRef(new Animated.Value(1)).current;
+  const jobSlideAnim = useRef(new Animated.Value(1)).current;
+  const deptSlideAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (nameModalVisible && nameSlideAnim) {
@@ -145,7 +128,6 @@ const ProfileScreen = () => {
     } else if (field === 'department') {
       setDepartmentInput(value);
     }
-    await syncProfileToConvex(updates);
     setSaving(false);
   };
 
@@ -162,7 +144,6 @@ const ProfileScreen = () => {
     const newUrl = asset.uri;
     setAvatarUrl(newUrl);
     setProfile((prev: any) => ({ ...prev, avatar_url: newUrl, updated_at: Date.now() }));
-    await syncProfileToConvex({ avatar_url: newUrl });
     setSaving(false);
   };
 
@@ -193,14 +174,14 @@ const ProfileScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.contentContainer, width <= 360 && { paddingTop: spacing.xxl, padding: spacing.md }]} showsVerticalScrollIndicator={false}>
         <View style={styles.headerSection}>
           <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.85}>
             <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <ProfileAvatar size={80} url={profile?.avatar_url} />
+              <View style={[styles.avatar, width <= 360 && { width: 80, height: 80, borderRadius: 40 }]}>
+                <ProfileAvatar size={width <= 360 ? 64 : 80} url={profile?.avatar_url} />
               </View>
-              <View style={styles.editBadge}>
+              <View style={[styles.editBadge, width <= 360 && { width: 24, height: 24, borderRadius: 12, bottom: -4, right: -4 }]}>
                 <EditIcon size={14} color={colors.bgMain} />
               </View>
             </View>

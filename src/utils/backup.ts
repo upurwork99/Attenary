@@ -86,19 +86,31 @@ export async function saveBackupToFile(backup: BackupSchema): Promise<{ fileName
     const link = document.createElement('a');
     link.href = url;
     link.download = fileName;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
     return { fileName, size: backupString.length };
   } else {
     const cacheDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory;
     const filePath = cacheDir + fileName;
-    await (FileSystem as any).writeAsStringAsync(filePath, backupString, {
-      encoding: (FileSystem as any).EncodingType.UTF8,
-    });
-    await Sharing.shareAsync(filePath, {
-      mimeType: 'application/json',
-      dialogTitle: 'Backup Attenary Data',
-    });
+    try {
+      await (FileSystem as any).writeAsStringAsync(filePath, backupString, {
+        encoding: (FileSystem as any).EncodingType.UTF8,
+      });
+    } catch (writeError) {
+      console.error('Backup write failed:', writeError);
+      throw new Error('Failed to write backup file');
+    }
+    
+    try {
+      await (Sharing as any).shareAsync(filePath, {
+        mimeType: 'application/octet-stream',
+        dialogTitle: 'Backup Attenary Data',
+      });
+    } catch (shareError) {
+      console.warn('Backup share failed, file saved locally:', shareError);
+    }
     return { fileName, size: backupString.length };
   }
 }

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  useWindowDimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
@@ -30,6 +31,7 @@ const UserIcon = ({ size = 20 }: { size?: number }) => (
 );
 
 const ManageScreen = () => {
+  const { width } = useWindowDimensions();
   const { appData } = useApp();
 
   return (
@@ -45,8 +47,8 @@ const ManageScreen = () => {
             HEADER SECTION
             ═══════════════════════════════════════════════════════════ */}
         <View style={styles.headerSection}>
-          <View style={styles.headerIconContainer}>
-            <SettingsIcon size={28} />
+          <View style={[styles.headerIconContainer, width <= 360 && { width: 44, height: 44, borderRadius: 12 }]}>
+            <SettingsIcon size={width <= 360 ? 22 : 28} />
           </View>
           <View style={styles.headerTextContainer}>
             <Text style={styles.title}>Manage</Text>

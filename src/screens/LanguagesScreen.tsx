@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -70,6 +71,7 @@ const languageOptions: LanguageOption[] = [
 ];
 
 const LanguagesScreen = () => {
+  const { width } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { language: currentLanguage, setLanguage, t } = useLanguage();
 
@@ -96,7 +98,7 @@ const LanguagesScreen = () => {
         </TouchableOpacity>
 
         <View style={styles.titleBlock}>
-          <Text style={styles.title}>{t('languages.title')}</Text>
+          <Text style={[styles.title, width <= 360 && { fontSize: fonts.sizes.xxl }]}>{t('languages.title')}</Text>
           <Text style={styles.subtitle}>{t('languages.subtitle')}</Text>
         </View>
       </View>
@@ -120,11 +122,12 @@ const LanguagesScreen = () => {
                 onPress={() => handleLanguageSelect(option.code)}
                 activeOpacity={0.7}
               >
-                <View style={styles.rowLeft}>
-                  <View style={[
-                    styles.flagBox,
-                    isSelected && styles.flagBoxActive,
-                  ]}>
+                 <View style={styles.rowLeft}>
+                   <View style={[
+                     styles.flagBox,
+                     width <= 360 && { width: 40, height: 40, marginRight: spacing.sm },
+                     isSelected && styles.flagBoxActive,
+                   ]}>
                     <option.FlagComponent size={28} />
                   </View>
                   <View style={styles.languageInfo}>
