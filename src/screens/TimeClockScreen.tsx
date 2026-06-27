@@ -44,7 +44,6 @@ const TimeClockScreen = () => {
   const { setVisible } = useTabBarVisibility();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [employeeName, setEmployeeNameLocal] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
@@ -175,7 +174,7 @@ const TimeClockScreen = () => {
                 return t('timeclock.goodNight');
               })()}
             </Text>
-            <Text style={styles.employeeName}>{employeeName || t('timeclock.employee')}</Text>
+            <Text style={styles.employeeName}>{appData.employeeName || t('timeclock.employee')}</Text>
           </View>
         </View>
 

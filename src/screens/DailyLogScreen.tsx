@@ -170,8 +170,11 @@ const ActivityChart: React.FC<ActivityChartProps> = ({ data }) => {
         }}
       >
         {touchedIndex !== null && tooltip && (
-          <View style={styles.rnTooltip} pointerEvents="none">
-            <Text style={styles.rnTooltipText}>Sessions: {tooltip.value}</Text>
+          <View style={[
+            styles.rnTooltip,
+            isSmall && { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 3 }
+          ]} pointerEvents="none">
+            <Text style={[styles.rnTooltipText, isSmall && { fontSize: 9 }]}>Sessions: {tooltip.value}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -289,9 +292,10 @@ const AmbientBlurs = () => {
 // TOTAL HOURS CARD
 // ═══════════════════════════════════════════════════════════════════
 
-const TotalHoursCard: React.FC<{ totalHours: string; t: (k: string) => string }> = ({
+const TotalHoursCard: React.FC<{ totalHours: string; t: (k: string) => string; isSmall?: boolean }> = ({
   totalHours,
   t,
+  isSmall,
 }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -313,12 +317,12 @@ const TotalHoursCard: React.FC<{ totalHours: string; t: (k: string) => string }>
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity activeOpacity={0.85} onPressIn={onPressIn} onPressOut={onPressOut}>
-        <InnerCard style={styles.hoursCard}>
-          <Text style={styles.totalLabel}>{t('dailylog.totalHours')}</Text>
-          <Text style={styles.totalValue} numberOfLines={1} adjustsFontSizeToFit>
-            {totalHours}
-          </Text>
-        </InnerCard>
+         <InnerCard style={styles.hoursCard}>
+           <Text style={[styles.totalLabel, isSmall && { fontSize: 10 }]}>{t('dailylog.totalHours')}</Text>
+           <Text style={[styles.totalValue, isSmall && { fontSize: 32 }]} numberOfLines={1} adjustsFontSizeToFit>
+             {totalHours}
+           </Text>
+         </InnerCard>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -328,18 +332,19 @@ const TotalHoursCard: React.FC<{ totalHours: string; t: (k: string) => string }>
 // HOURLY ACTIVITY CHART CARD
 // ═══════════════════════════════════════════════════════════════════
 
-const HourlyActivityCard: React.FC<{ data: number[]; t: (k: string) => string }> = ({
+const HourlyActivityCard: React.FC<{ data: number[]; t: (k: string) => string; isSmall?: boolean }> = ({
   data,
   t,
+  isSmall,
 }) => (
-  <InnerCard style={styles.chartCard}>
+  <InnerCard style={[styles.chartCard, isSmall && { padding: 12 }]}>
     <View style={styles.chartHeader}>
-      <Text style={styles.chartTitle}>{t('dailylog.hourlyActivity')}</Text>
+      <Text style={[styles.chartTitle, isSmall && { fontSize: 10 }]}>{t('dailylog.hourlyActivity')}</Text>
       <View style={styles.swipeBadge}>
-        <Text style={styles.swipeBadgeText}>{t('dailylog.swipeView')}</Text>
+        <Text style={[styles.swipeBadgeText, isSmall && { fontSize: 8 }]}>{t('dailylog.swipeView')}</Text>
       </View>
     </View>
-    <ActivityChart data={data} />
+    <ActivityChart data={data} isSmall={isSmall} />
   </InnerCard>
 );
 
@@ -352,7 +357,8 @@ const StatsRow: React.FC<{
   active: number;
   completed: number;
   t: (k: string) => string;
-}> = ({ totalSessions, active, completed, t }) => {
+  isSmall?: boolean;
+}> = ({ totalSessions, active, completed, t, isSmall }) => {
   const activeDisplay = totalSessions > 0 ? active : 0;
   const completedDisplay = totalSessions > 0 ? completed : 0;
 
@@ -360,15 +366,15 @@ const StatsRow: React.FC<{
     <View style={styles.statsRow}>
       <InnerCard style={styles.statCard}>
         <Text style={styles.statLabel}>{t('dailylog.totalSessions')}</Text>
-        <Text style={styles.statValue}>{totalSessions}</Text>
+        <Text style={[styles.statValue, isSmall && { fontSize: 16 }]}>{totalSessions}</Text>
       </InnerCard>
       <InnerCard style={styles.statCard}>
         <Text style={[styles.statLabel, styles.statLabelActive]}>{t('dailylog.active')}</Text>
-        <Text style={[styles.statValue, styles.statValueActive]}>{activeDisplay}</Text>
+        <Text style={[styles.statValue, styles.statValueActive, isSmall && { fontSize: 16 }]}>{activeDisplay}</Text>
       </InnerCard>
       <InnerCard style={styles.statCard}>
         <Text style={styles.statLabel}>{t('dailylog.completed')}</Text>
-        <Text style={styles.statValue}>{completedDisplay}</Text>
+        <Text style={[styles.statValue, isSmall && { fontSize: 16 }]}>{completedDisplay}</Text>
       </InnerCard>
     </View>
   );
@@ -378,16 +384,17 @@ const StatsRow: React.FC<{
 // SESSION CARD
 // ═══════════════════════════════════════════════════════════════════
 
-const SessionRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const SessionRow: React.FC<{ label: string; value: string; isSmall?: boolean }> = ({ label, value, isSmall }) => (
   <View style={styles.sessionRow}>
-    <Text style={styles.sessionRowLabel}>{label}</Text>
-    <Text style={styles.sessionRowValue}>{value}</Text>
+    <Text style={[styles.sessionRowLabel, isSmall && { fontSize: 10 }]}>{label}</Text>
+    <Text style={[styles.sessionRowValue, isSmall && { fontSize: 10 }]}>{value}</Text>
   </View>
 );
 
-const SessionCard: React.FC<{ sessions: any[]; t: (k: string) => string }> = ({
+const SessionCard: React.FC<{ sessions: any[]; t: (k: string) => string; isSmall?: boolean }> = ({
   sessions,
   t,
+  isSmall,
 }) => {
   const sorted = useMemo(
     () => [...sessions].sort((a: any, b: any) => b.checkInTime - a.checkInTime),
@@ -397,9 +404,9 @@ const SessionCard: React.FC<{ sessions: any[]; t: (k: string) => string }> = ({
   if (sorted.length === 0) return null;
 
   return (
-    <InnerCard style={styles.sessionCard}>
+    <InnerCard style={[styles.sessionCard, isSmall && { padding: 14 }]}>
       <View style={styles.sessionHeader}>
-        <Text style={styles.sessionTitle}>{t('dailylog.sessions')}</Text>
+        <Text style={[styles.sessionTitle, isSmall && { fontSize: 10 }]}>{t('dailylog.sessions')}</Text>
         <View style={styles.completedBadge}>
           <View style={styles.completedDot} />
           <Text style={styles.completedBadgeText}>{t('dailylog.completed')}</Text>
@@ -426,10 +433,12 @@ const SessionCard: React.FC<{ sessions: any[]; t: (k: string) => string }> = ({
             <SessionRow
               label={`${t('dailylog.checkIn')}:`}
               value={formatTimeWithSpace(checkin)}
+              isSmall={isSmall}
             />
             <SessionRow
               label={`${t('dailylog.checkOut')}:`}
               value={checkout ? formatTimeNoSuffix(checkout) : '—'}
+              isSmall={isSmall}
             />
             <View style={styles.durationRow}>
               <Text style={styles.durationLabel}>{t('dailylog.duration')}:</Text>
@@ -453,6 +462,8 @@ const SessionCard: React.FC<{ sessions: any[]; t: (k: string) => string }> = ({
 const DailyLogScreen = ({ navigation }: any) => {
   const { appData } = useApp();
   const { t, isRTL } = useLanguage();
+  const { width } = useWindowDimensions();
+  const isSmall = width <= 360;
   const [refreshing, setRefreshing] = useState(false);
 
   const today = getTodayString();
@@ -503,7 +514,7 @@ const DailyLogScreen = ({ navigation }: any) => {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, isSmall && { paddingHorizontal: 12, gap: 14 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -515,18 +526,19 @@ const DailyLogScreen = ({ navigation }: any) => {
         }
       >
         <View style={styles.titleRow}>
-          <Text style={styles.pageTitle}>Daily Log</Text>
+          <Text style={[styles.pageTitle, isSmall && { fontSize: 20 }]}>Daily Log</Text>
         </View>
 
-        <TotalHoursCard totalHours={totalHoursStr} t={t} />
-        <HourlyActivityCard data={hourlyCounts} t={t} />
+        <TotalHoursCard totalHours={totalHoursStr} t={t} isSmall={isSmall} />
+        <HourlyActivityCard data={hourlyCounts} t={t} isSmall={isSmall} />
         <StatsRow
           totalSessions={todayStats.totalSessions}
           active={todayStats.activeSessions}
           completed={todayStats.completedSessions}
           t={t}
+          isSmall={isSmall}
         />
-        <SessionCard sessions={sessions} t={t} />
+        <SessionCard sessions={sessions} t={t} isSmall={isSmall} />
 
         <View style={{ height: 100 }} />
       </ScrollView>

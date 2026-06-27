@@ -8,6 +8,9 @@ import {
   StatusBar,
   Modal,
   useWindowDimensions,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { colors, spacing, borderRadius, fonts, shadows } from '../theme/colors';
@@ -15,6 +18,10 @@ import { formatTime, getDateString } from '../utils/timeUtils';
 import Svg, { Polyline, Path } from 'react-native-svg';
 
 const CHART_HEIGHT = 48;
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const AnalyticsScreen = () => {
   const { width } = useWindowDimensions();
@@ -25,12 +32,27 @@ const AnalyticsScreen = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(new Date().getMonth());
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
-  const [showYearPicker, setShowYearPicker] = useState(false);
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [showDayPicker, setShowDayPicker] = useState(false);
+  const [activePicker, setActivePicker] = useState<'year' | 'month' | 'day' | null>(null);
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [pickerModalType, setPickerModalType] = useState<'year' | 'month' | 'day'>('month');
   const [viewMonthYear, setViewMonthYear] = useState(new Date().getFullYear());
   const [viewDayYear, setViewDayYear] = useState(new Date().getFullYear());
   const [viewDayMonth, setViewDayMonth] = useState(new Date().getMonth());
+
+  const openPicker = (type: 'year' | 'month' | 'day') => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setActivePicker(type);
+    if (type === 'month') setViewMonthYear(selectedYear);
+    if (type === 'day') {
+      setViewDayYear(selectedYear);
+      setViewDayMonth(selectedMonthIndex);
+    }
+  };
+
+  const closePicker = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setActivePicker(null);
+  };
 
   const recentSessions = useMemo(() =>
     appData.sessions
@@ -460,30 +482,15 @@ const AnalyticsScreen = () => {
                   <View style={[styles.modalRow, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
                     <View>
                       <Text style={styles.modalRowLabel}>Custom Year</Text>
-                      <View>
-                        <TouchableOpacity
-                          style={[styles.modalSelectorBtn, { backgroundColor: colors.bgMain, borderColor: colors.border }]}
-                          onPress={() => setShowYearPicker(!showYearPicker)}
-                        >
-                          <Text style={[styles.modalSelectorText, { color: colors.textSecondary }]}>Year: {selectedYear}</Text>
-                          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.textMuted} strokeWidth="2.5">
-                            <Path d="M19 4H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM16 2v4M8 2v4M3 10h18" />
-                          </Svg>
-                        </TouchableOpacity>
-                        {showYearPicker && (
-                          <View style={styles.inlinePickerGrid}>
-                            {Array.from(new Set(recentSessions.map(s => new Date(s.checkInTime).getFullYear()))).sort((a, b) => b - a).map(y => (
-                              <TouchableOpacity
-                                key={y}
-                                style={[styles.inlinePickerBtn, selectedYear === y && { backgroundColor: colors.accent, borderColor: colors.accent }]}
-                                onPress={() => { setSelectedYear(y); setShowYearPicker(false); }}
-                              >
-                                <Text style={[styles.inlinePickerText, selectedYear === y && { color: colors.white }]}>{y}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        )}
-                      </View>
+                      <TouchableOpacity
+                        style={[styles.modalSelectorBtn, { backgroundColor: colors.bgMain, borderColor: colors.border }]}
+                        onPress={() => { setPickerModalType('year'); setPickerModalVisible(true); }}
+                      >
+                        <Text style={[styles.modalSelectorText, { color: colors.textSecondary }]}>Year: {selectedYear}</Text>
+                        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.textMuted} strokeWidth="2.5">
+                          <Path d="M19 4H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM16 2v4M8 2v4M3 10h18" />
+                        </Svg>
+                      </TouchableOpacity>
                     </View>
                     <Text style={[styles.modalRowValue, { color: colors.textPrimary }]}>{yearAvg}</Text>
                   </View>
@@ -491,43 +498,17 @@ const AnalyticsScreen = () => {
                   <View style={[styles.modalRow, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
                     <View>
                       <Text style={styles.modalRowLabel}>Custom Month</Text>
-                      <View>
-                        <TouchableOpacity
-                          style={[styles.modalSelectorBtn, { backgroundColor: colors.bgMain, borderColor: colors.border }]}
-                          onPress={() => { setViewMonthYear(selectedYear); setShowMonthPicker(!showMonthPicker); }}
-                        >
-                          <Text style={[styles.modalSelectorText, { color: colors.textSecondary }]}>
-                            Month: {new Date(selectedYear, selectedMonthIndex).toLocaleString('default', { month: 'long' })} {selectedYear}
-                          </Text>
-                          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.textMuted} strokeWidth="2.5">
-                            <Path d="M19 4H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM16 2v4M8 2v4M3 10h18" />
-                          </Svg>
-                        </TouchableOpacity>
-                        {showMonthPicker && (
-                          <View style={styles.inlinePickerGrid}>
-                            <View style={styles.pickerYearNav}>
-                              <TouchableOpacity onPress={() => setViewMonthYear(y => y - 1)} style={styles.pickerNavBtn}>
-                                <Text style={styles.pickerNavText}>‹</Text>
-                              </TouchableOpacity>
-                              <Text style={styles.pickerYearLabel}>{viewMonthYear}</Text>
-                              <TouchableOpacity onPress={() => setViewMonthYear(y => y + 1)} style={styles.pickerNavBtn}>
-                                <Text style={styles.pickerNavText}>›</Text>
-                              </TouchableOpacity>
-                            </View>
-                            <View style={styles.inlinePickerGrid}>
-                              {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, idx) => (
-                                <TouchableOpacity
-                                  key={idx}
-                                  style={[styles.inlinePickerBtn, selectedMonthIndex === idx && { backgroundColor: colors.accent, borderColor: colors.accent }]}
-                                  onPress={() => { setSelectedMonthIndex(idx); setShowMonthPicker(false); }}
-                                >
-                                  <Text style={[styles.inlinePickerText, selectedMonthIndex === idx && { color: colors.white }]}>{m}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          </View>
-                        )}
-                      </View>
+                      <TouchableOpacity
+                        style={[styles.modalSelectorBtn, { backgroundColor: colors.bgMain, borderColor: colors.border }]}
+                        onPress={() => { setPickerModalType('month'); setPickerModalVisible(true); }}
+                      >
+                        <Text style={[styles.modalSelectorText, { color: colors.textSecondary }]}>
+                          Month: {new Date(selectedYear, selectedMonthIndex).toLocaleString('default', { month: 'long' })} {selectedYear}
+                        </Text>
+                        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.textMuted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <Path d="M6 9l6 6 6-6" />
+                        </Svg>
+                      </TouchableOpacity>
                     </View>
                     <Text style={[styles.modalRowValue, { color: colors.textPrimary }]}>{monthAvg}</Text>
                   </View>
@@ -535,62 +516,17 @@ const AnalyticsScreen = () => {
                   <View style={[styles.modalRow, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
                     <View>
                       <Text style={styles.modalRowLabel}>Custom Day</Text>
-                      <View>
-                        <TouchableOpacity
-                          style={[styles.modalSelectorBtn, { backgroundColor: colors.bgMain, borderColor: colors.border }]}
-                          onPress={() => { setViewDayYear(selectedYear); setViewDayMonth(selectedMonthIndex); setShowDayPicker(!showDayPicker); }}
-                        >
-                          <Text style={[styles.modalSelectorText, { color: colors.textSecondary }]}>
-                            Day: {new Date(selectedYear, selectedMonthIndex, selectedDay).toLocaleString('default', { month: 'short' })} {selectedDay}, {selectedYear}
-                          </Text>
-                          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.textMuted} strokeWidth="2.5">
-                            <Path d="M19 4H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM16 2v4M8 2v4M3 10h18" />
-                          </Svg>
-                        </TouchableOpacity>
-                        {showDayPicker && (() => {
-                          const y = viewDayYear;
-                          const m = viewDayMonth;
-                          const firstDay = new Date(y, m, 1).getDay();
-                          const daysInMonth = new Date(y, m + 1, 0).getDate();
-                          const prevDays = new Date(y, m, 0).getDate();
-                          const days: any[] = [];
-                          for (let i = firstDay - 1; i >= 0; i--) days.push({ d: prevDays - i, empty: true });
-                          for (let d = 1; d <= daysInMonth; d++) days.push({ d, empty: false });
-                          while (days.length % 7 !== 0) days.push({ d: null, empty: true });
-                          return (
-                            <View style={styles.inlinePickerGrid}>
-                              <View style={styles.pickerYearNav}>
-                                <TouchableOpacity onPress={() => setViewDayYear(y => y - 1)} style={styles.pickerNavBtn}>
-                                  <Text style={styles.pickerNavText}>‹</Text>
-                                </TouchableOpacity>
-                                <Text style={styles.pickerYearLabel}>{viewDayYear} — {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m]}</Text>
-                                <TouchableOpacity onPress={() => setViewDayYear(y => y + 1)} style={styles.pickerNavBtn}>
-                                  <Text style={styles.pickerNavText}>›</Text>
-                                </TouchableOpacity>
-                              </View>
-                              <View style={styles.dayHeaderRow}>
-                                {['S','M','T','W','T','F','S'].map((d, i) => <Text key={i} style={styles.dayHeaderText}>{d}</Text>)}
-                              </View>
-                              <View style={styles.dayGrid}>
-                                {days.map((item, idx) => (
-                                  <TouchableOpacity
-                                    key={idx}
-                                    disabled={item.empty}
-                                    style={[
-                                      styles.dayCell,
-                                      !item.empty && selectedDay === item.d && selectedMonthIndex === m && selectedYear === y && { backgroundColor: colors.accent, borderRadius: 14, borderColor: colors.accent },
-                                      !item.empty && { borderColor: colors.border },
-                                    ]}
-                                    onPress={() => { if (!item.empty) { setSelectedDay(item.d); setShowDayPicker(false); } }}
-                                  >
-                                    <Text style={[styles.dayCellText, !item.empty && selectedDay === item.d && { color: colors.white }]}>{item.empty ? '' : item.d}</Text>
-                                  </TouchableOpacity>
-                                ))}
-                              </View>
-                            </View>
-                          );
-                        })()}
-                      </View>
+                      <TouchableOpacity
+                        style={[styles.modalSelectorBtn, { backgroundColor: colors.bgMain, borderColor: colors.border }]}
+                        onPress={() => { setPickerModalType('day'); setPickerModalVisible(true); }}
+                      >
+                        <Text style={[styles.modalSelectorText, { color: colors.textSecondary }]}>
+                          Day: {new Date(selectedYear, selectedMonthIndex, selectedDay).toLocaleString('default', { month: 'short' })} {selectedDay}, {selectedYear}
+                        </Text>
+                        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.textMuted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <Path d="M6 9l6 6 6-6" />
+                        </Svg>
+                      </TouchableOpacity>
                     </View>
                     <Text style={[styles.modalRowValue, { color: colors.textPrimary }]}>{dayAvg}</Text>
                   </View>
@@ -601,6 +537,118 @@ const AnalyticsScreen = () => {
                 <Text style={styles.modalCloseText}>Dismiss Analytics View</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Month/Day Picker Popup Modal */}
+      <Modal
+        visible={pickerModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPickerModalVisible(false)}
+      >
+        <TouchableOpacity style={styles.pickerModalOverlay} activeOpacity={1} onPress={() => setPickerModalVisible(false)}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerModalHandle} />
+            <Text style={styles.pickerModalTitle}>{pickerModalType === 'year' ? 'Select Year' : pickerModalType === 'month' ? 'Select Month' : 'Select Day'}</Text>
+
+            {pickerModalType === 'year' && (
+              <ScrollView style={styles.pickerScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                <View style={styles.monthGrid}>
+                  {Array.from(new Set(recentSessions.map(s => new Date(s.checkInTime).getFullYear()))).sort((a, b) => b - a).map(y => (
+                    <TouchableOpacity
+                      key={y}
+                      style={[styles.yearCell, selectedYear === y && { backgroundColor: colors.accent, borderColor: colors.accent }]}
+                      onPress={() => { setSelectedYear(y); setPickerModalVisible(false); }}
+                    >
+                      <Text style={[styles.yearCellText, selectedYear === y && { color: colors.white }]}>{y}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            )}
+
+            {pickerModalType === 'month' && (
+              <View>
+                <View style={styles.pickerYearNav}>
+                  <TouchableOpacity onPress={() => setViewMonthYear(y => y - 1)} style={styles.pickerNavBtn}>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M15 18l-6-6 6-6" />
+                    </Svg>
+                  </TouchableOpacity>
+                  <Text style={styles.pickerYearLabel}>{viewMonthYear}</Text>
+                  <TouchableOpacity onPress={() => setViewMonthYear(y => y + 1)} style={styles.pickerNavBtn}>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M9 18l6-6-6-6" />
+                    </Svg>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.pickerScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                  <View style={styles.monthGrid}>
+                    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[styles.monthCell, selectedMonthIndex === idx && { backgroundColor: colors.accent, borderColor: colors.accent }]}
+                        onPress={() => { setSelectedMonthIndex(idx); setPickerModalVisible(false); }}
+                      >
+                        <Text style={[styles.monthCellText, selectedMonthIndex === idx && { color: colors.white }]}>{m}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+
+            {pickerModalType === 'day' && (
+              <View>
+                <View style={styles.pickerYearNav}>
+                  <TouchableOpacity onPress={() => setViewDayYear(y => y - 1)} style={styles.pickerNavBtn}>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M15 18l-6-6 6-6" />
+                    </Svg>
+                  </TouchableOpacity>
+                  <Text style={styles.pickerYearLabel}>{viewDayYear} — {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][viewDayMonth]}</Text>
+                  <TouchableOpacity onPress={() => setViewDayYear(y => y + 1)} style={styles.pickerNavBtn}>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M9 18l6-6-6-6" />
+                    </Svg>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.dayHeaderRow}>
+                  {['S','M','T','W','T','F','S'].map((d, i) => <Text key={i} style={styles.dayHeaderText}>{d}</Text>)}
+                </View>
+                <ScrollView style={styles.pickerScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                  <View style={styles.dayGrid}>
+                    {(() => {
+                      const y = viewDayYear;
+                      const m = viewDayMonth;
+                      const firstDay = new Date(y, m, 1).getDay();
+                      const daysInMonth = new Date(y, m + 1, 0).getDate();
+                      const prevDays = new Date(y, m, 0).getDate();
+                      const days: any[] = [];
+                      for (let i = firstDay - 1; i >= 0; i--) days.push({ d: prevDays - i, empty: true });
+                      for (let d = 1; d <= daysInMonth; d++) days.push({ d, empty: false });
+                      while (days.length % 7 !== 0) days.push({ d: null, empty: true });
+                      return days.map((item, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          disabled={item.empty}
+                          style={[
+                            styles.dayCell,
+                            !item.empty && selectedDay === item.d && selectedMonthIndex === m && selectedYear === y && { backgroundColor: colors.accent, borderRadius: 14, borderColor: colors.accent },
+                            !item.empty && { borderColor: colors.border },
+                          ]}
+                          onPress={() => { if (!item.empty) { setSelectedDay(item.d); setPickerModalVisible(false); } }}
+                        >
+                          <Text style={[styles.dayCellText, !item.empty && selectedDay === item.d && { color: colors.white }]}>{item.empty ? '' : item.d}</Text>
+                        </TouchableOpacity>
+                      ));
+                    })()}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -1009,26 +1057,45 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.accent,
   },
-  inlinePickerGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
+  pickerPopover: {
     marginTop: spacing.sm,
-  },
-  inlinePickerBtn: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.sm,
+    backgroundColor: colors.bgSecondary,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bgMain,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  inlinePickerText: {
+  pickerPopoverHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  pickerPopoverTitle: {
+    fontSize: fonts.sizes.xxs,
+    fontWeight: '900',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  pickerPopoverClose: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  pickerPopoverCloseText: {
     fontSize: fonts.sizes.xs,
     fontWeight: '700',
     color: colors.accent,
+  },
+  pickerScroll: {
+    maxHeight: 160,
+    width: '100%',
   },
   pickerYearNav: {
     flexDirection: 'row',
@@ -1041,29 +1108,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
-  pickerNavText: {
-    fontSize: fonts.sizes.lg,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
   pickerYearLabel: {
     fontSize: fonts.sizes.sm,
     fontWeight: '900',
     color: colors.textSecondary,
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    width: '100%',
+    maxHeight: 160,
   },
   dayHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
     marginBottom: spacing.xs,
-  },
-  dayHeaderText: {
-    fontSize: fonts.sizes.xxs,
-    fontWeight: '900',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    width: 28,
-    textAlign: 'center',
   },
   dayGrid: {
     flexDirection: 'row',
@@ -1077,11 +1138,43 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayCellText: {
+    fontSize: fonts.sizes.xs,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  yearCell: {
+    flex: 1,
+    minWidth: '28%',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    backgroundColor: colors.bgSecondary,
+  },
+  yearCellText: {
+    fontSize: fonts.sizes.sm,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  monthCell: {
+    flex: 1,
+    minWidth: '22%',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    backgroundColor: colors.bgSecondary,
+  },
+  monthCellText: {
     fontSize: fonts.sizes.xs,
     fontWeight: '700',
     color: colors.textSecondary,
@@ -1100,6 +1193,41 @@ const styles = StyleSheet.create({
     fontSize: fonts.sizes.sm,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  pickerModalContent: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#000000',
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    padding: spacing.xxl,
+    paddingBottom: spacing.xxl,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+    maxHeight: '70%',
+  },
+  pickerModalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  pickerModalTitle: {
+    fontSize: fonts.sizes.xl,
+    fontWeight: '900',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
   },
 });
 

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   PanResponder,
+  useWindowDimensions,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { colors, fonts } from '../theme/colors';
@@ -27,9 +28,11 @@ interface DayChartData {
 const CustomBarChart = ({
   data,
   selectedMonth,
+  isSmall = false,
 }: {
   data: DayChartData[];
   selectedMonth: string;
+  isSmall?: boolean;
 }) => {
   const [tooltip, setTooltip] = useState<{ idx: number; x: number; y: number } | null>(null);
   const [chartWidth, setChartWidth] = useState(0);
@@ -202,13 +205,13 @@ const CustomBarChart = ({
           <View
             style={[
               styles.tooltip,
-              {
+              isSmall ? { left: Math.max(2, Math.min(tooltip.x - 24, chartWidth - 50)), top: Math.max(0, tooltip.y - 24) } : {
                 left: Math.max(4, Math.min(tooltip.x - 36, chartWidth - 76)),
                 top: Math.max(0, tooltip.y - 32),
               },
             ]}
           >
-            <Text style={styles.tooltipText}>
+            <Text style={[styles.tooltipText, isSmall && { fontSize: 9 }]}>
               {selectedMonth} {data[tooltip.idx].day}: {data[tooltip.idx].hours.toFixed(1)}h
             </Text>
           </View>
@@ -221,6 +224,8 @@ const CustomBarChart = ({
 
 const MonthlyReportScreen = () => {
   const { appData } = useApp();
+  const { width } = useWindowDimensions();
+  const isSmall = width <= 360;
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(new Date().getMonth());
@@ -329,11 +334,11 @@ const MonthlyReportScreen = () => {
       <StatusBar barStyle="light-content" />
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, isSmall && { padding: 14, paddingTop: 32, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
-          <Text style={styles.title}>Monthly Report</Text>
+          <Text style={[styles.title, isSmall && { fontSize: fonts.sizes.sm }]}>Monthly Report</Text>
           <View style={styles.yearSelectorContainer}>
             <TouchableOpacity
               style={styles.yearButton}
@@ -412,45 +417,46 @@ const MonthlyReportScreen = () => {
           </ScrollView>
         </View>
 
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricCard}>
+        <View style={[styles.metricsGrid, isSmall && { flexWrap: 'wrap' }]}>
+          <View style={[styles.metricCard, isSmall && { padding: 10, minHeight: 60 }]}>
             <View style={styles.metricDotRow}>
               <View style={styles.metricDot} />
             </View>
-            <Text style={styles.metricLabel}>Tracked</Text>
-            <Text style={styles.metricValue}>{Math.floor(metrics.totalHours)}h</Text>
+            <Text style={[styles.metricLabel, isSmall && { fontSize: 9 }]}>Tracked</Text>
+            <Text style={[styles.metricValue, isSmall && { fontSize: 13 }]}>{Math.floor(metrics.totalHours)}h</Text>
           </View>
-          <View style={styles.metricCard}>
+          <View style={[styles.metricCard, isSmall && { padding: 10, minHeight: 60 }]}>
             <View style={styles.metricDotRow} />
-            <Text style={styles.metricLabel}>Sessions</Text>
-            <Text style={styles.metricValue}>{metrics.totalSessions}</Text>
+            <Text style={[styles.metricLabel, isSmall && { fontSize: 9 }]}>Sessions</Text>
+            <Text style={[styles.metricValue, isSmall && { fontSize: 13 }]}>{metrics.totalSessions}</Text>
           </View>
-          <View style={styles.metricCard}>
+          <View style={[styles.metricCard, isSmall && { padding: 10, minHeight: 60 }]}>
             <View style={styles.metricDotRow} />
-            <Text style={styles.metricLabel}>Active Days</Text>
-            <Text style={styles.metricValue}>{metrics.activeDays} d</Text>
+            <Text style={[styles.metricLabel, isSmall && { fontSize: 9 }]}>Active Days</Text>
+            <Text style={[styles.metricValue, isSmall && { fontSize: 13 }]}>{metrics.activeDays} d</Text>
           </View>
         </View>
 
-        <View style={styles.dailyCard}>
+        <View style={[styles.dailyCard, isSmall && { padding: 12 }]}>
           <View style={styles.chartHeader}>
             <View style={styles.chartDot} />
-            <Text style={styles.chartTitle}>Daily Breakdown</Text>
+             <Text style={[styles.chartTitle, isSmall && { fontSize: 10 }]}>Daily Breakdown</Text>
           </View>
-          <View style={styles.chartContainer}>
+          <View style={[styles.chartContainer, isSmall && { height: 140 }]}>
             <CustomBarChart
               data={chartData}
               selectedMonth={selectedMonthLabel}
+              isSmall={isSmall}
             />
           </View>
         </View>
 
-        <View style={styles.peakCard}>
+        <View style={[styles.peakCard, isSmall && { padding: 12 }]}>
           <View>
-            <Text style={styles.peakLabel}>Peak Output</Text>
-            <Text style={styles.peakSublabel}>Highest single-day focus duration</Text>
-          </View>
-          <Text style={styles.peakValue}>{metrics.peakOutput.toFixed(1)} hrs</Text>
+          <Text style={[styles.peakLabel, isSmall && { fontSize: 9 }]}>Peak Output</Text>
+          <Text style={[styles.peakSublabel, isSmall && { fontSize: 10 }]}>Highest single-day focus duration</Text>
+        </View>
+        <Text style={[styles.peakValue, isSmall && { fontSize: 14 }]}>{metrics.peakOutput.toFixed(1)} hrs</Text>
         </View>
       </ScrollView>
     </View>
