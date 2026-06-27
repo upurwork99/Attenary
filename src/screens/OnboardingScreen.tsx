@@ -443,9 +443,10 @@ const OnboardingScreen = () => {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bgMain} />
+       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <ScrollView
         ref={scrollViewRef}
+        style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -505,7 +506,7 @@ const OnboardingScreen = () => {
 
 function makeStyles({ illustrationSize, avatarSize, paddingHorizontalResponsive, isTabletLandscape, isLandscape, isSmallDevice, titleSizeResponsive, subtitleSizeResponsive }: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.bgMain },
+    container: { flex: 1, backgroundColor: '#000000' },
     scrollContent: { flexGrow: 1, minHeight: '100%', paddingTop: isSmallDevice ? 40 : 60, paddingBottom: 40, paddingHorizontal: paddingHorizontalResponsive },
     stepCounter: { alignItems: 'center', marginBottom: spacing.lg },
     stepCounterText: { fontSize: fonts.sizes.sm, color: colors.textMuted, fontWeight: fonts.weights.medium as any },

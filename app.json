@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#f1eedf"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true
@@ -21,7 +21,7 @@
       "jsEngine": "hermes",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#f1eedf"
+        "backgroundColor": "#000000"
       },
       "package": "com.oryno.attenary",
       "permissions": [
@@ -30,7 +30,8 @@
       ],
       "compileSdkVersion": 35,
       "minSdkVersion": 23,
-      "targetSdkVersion": 35
+      "targetSdkVersion": 35,
+      "navigationBarColor": "#000000"
     },
     "web": {
       "favicon": "./assets/favicon.png"

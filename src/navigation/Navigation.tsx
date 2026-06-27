@@ -97,7 +97,7 @@ const Navigation = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{ color: '#f1f5f9', fontSize: 16 }}>Loading...</Text>
       </View>
     );
@@ -119,7 +119,7 @@ const Navigation = () => {
           <Stack.Screen
             name="Onboarding"
             component={OnboardingScreen}
-            options={{ headerShown: false }}
+            options={{ headerShown: false, contentStyle: { backgroundColor: '#000000' } }}
           />
           <Stack.Screen
             name="Main"
